@@ -18,8 +18,9 @@ const Navigation = () => {
 
   const navigation = [
     { name: 'Events', href: '/events', icon: Calendar },
+    { name: 'Dashboard', href: '/dashboard', icon: User },
     { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
-    { name: 'Community', href: '/community', icon: Users },
+    { name: 'Organizer', href: '/organizer', icon: Users },
   ];
 
   const isActive = (path: string) => location.pathname === path;
