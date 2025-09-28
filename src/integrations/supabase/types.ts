@@ -14,16 +14,232 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      event_registrations: {
+        Row: {
+          check_in_time: string | null
+          checked_in: boolean | null
+          event_id: string
+          id: string
+          qr_code: string | null
+          registration_date: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          check_in_time?: string | null
+          checked_in?: boolean | null
+          event_id: string
+          id?: string
+          qr_code?: string | null
+          registration_date?: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          check_in_time?: string | null
+          checked_in?: boolean | null
+          event_id?: string
+          id?: string
+          qr_code?: string | null
+          registration_date?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          department: string | null
+          description: string | null
+          end_date: string
+          id: string
+          image_url: string | null
+          is_featured: boolean | null
+          location: string
+          max_attendees: number
+          points_reward: number | null
+          registration_fee: number | null
+          start_date: string
+          status: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          description?: string | null
+          end_date: string
+          id?: string
+          image_url?: string | null
+          is_featured?: boolean | null
+          location: string
+          max_attendees?: number
+          points_reward?: number | null
+          registration_fee?: number | null
+          start_date: string
+          status?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          description?: string | null
+          end_date?: string
+          id?: string
+          image_url?: string | null
+          is_featured?: boolean | null
+          location?: string
+          max_attendees?: number
+          points_reward?: number | null
+          registration_fee?: number | null
+          start_date?: string
+          status?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          college: string | null
+          created_at: string
+          department: string | null
+          email: string | null
+          first_name: string | null
+          id: string
+          is_verified: boolean | null
+          last_name: string | null
+          phone: string | null
+          points: number | null
+          updated_at: string
+          user_id: string
+          year: number | null
+        }
+        Insert: {
+          college?: string | null
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          is_verified?: boolean | null
+          last_name?: string | null
+          phone?: string | null
+          points?: number | null
+          updated_at?: string
+          user_id: string
+          year?: number | null
+        }
+        Update: {
+          college?: string | null
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          is_verified?: boolean | null
+          last_name?: string | null
+          phone?: string | null
+          points?: number | null
+          updated_at?: string
+          user_id?: string
+          year?: number | null
+        }
+        Relationships: []
+      }
+      user_points: {
+        Row: {
+          created_at: string
+          event_id: string | null
+          id: string
+          points: number
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          points: number
+          reason: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          points?: number
+          reason?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_points_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "participant"
+        | "organizer"
+        | "coordinator"
+        | "volunteer"
+        | "staff"
+        | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +366,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "participant",
+        "organizer",
+        "coordinator",
+        "volunteer",
+        "staff",
+        "admin",
+      ],
+    },
   },
 } as const

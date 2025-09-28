@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   Menu, 
   X, 
@@ -9,12 +10,14 @@ import {
   Trophy, 
   User,
   LogIn,
-  UserPlus 
+  UserPlus,
+  LogOut 
 } from 'lucide-react';
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { user, signOut } = useAuth();
 
   const navigation = [
     { name: 'Events', href: '/events', icon: Calendar },
@@ -62,18 +65,32 @@ const Navigation = () => {
 
           {/* Desktop Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            <Link to="/login">
-              <Button variant="ghost" size="sm">
-                <LogIn className="w-4 h-4 mr-2" />
-                Login
-              </Button>
-            </Link>
-            <Link to="/register">
-              <Button variant="hero" size="sm">
-                <UserPlus className="w-4 h-4 mr-2" />
-                Register
-              </Button>
-            </Link>
+            {user ? (
+              <>
+                <span className="text-sm text-muted-foreground">
+                  Welcome back!
+                </span>
+                <Button variant="ghost" size="sm" onClick={signOut}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="ghost" size="sm">
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Login
+                  </Button>
+                </Link>
+                <Link to="/auth">
+                  <Button variant="hero" size="sm">
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Register
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -110,18 +127,34 @@ const Navigation = () => {
               );
             })}
             <div className="pt-4 space-y-2">
-              <Link to="/login" onClick={() => setIsOpen(false)}>
-                <Button variant="ghost" className="w-full justify-start">
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Login
+              {user ? (
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-start"
+                  onClick={() => {
+                    signOut();
+                    setIsOpen(false);
+                  }}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
                 </Button>
-              </Link>
-              <Link to="/register" onClick={() => setIsOpen(false)}>
-                <Button variant="hero" className="w-full justify-start">
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Register
-                </Button>
-              </Link>
+              ) : (
+                <>
+                  <Link to="/auth" onClick={() => setIsOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start">
+                      <LogIn className="w-4 h-4 mr-2" />
+                      Login
+                    </Button>
+                  </Link>
+                  <Link to="/auth" onClick={() => setIsOpen(false)}>
+                    <Button variant="hero" className="w-full justify-start">
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Register
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         )}
