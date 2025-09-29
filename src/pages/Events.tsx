@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navigation from '@/components/layout/Navigation';
 import EventCard from '@/components/ui/EventCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Search, 
   Filter, 
@@ -15,114 +18,137 @@ import {
 const Events = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [events, setEvents] = useState<any[]>([]);
+  const [registrations, setRegistrations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchEvents();
+    if (user) {
+      fetchUserRegistrations();
+    }
+  }, [user]);
+
+  const fetchEvents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('start_date', { ascending: true });
+      
+      if (error) throw error;
+      setEvents(data || []);
+    } catch (error) {
+      console.error('Error fetching events:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load events. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserRegistrations = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('event_registrations')
+        .select('event_id')
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      setRegistrations(data || []);
+    } catch (error) {
+      console.error('Error fetching registrations:', error);
+    }
+  };
+
+  const handleRegister = async (eventId: string) => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to register for events.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('event_registrations')
+        .insert({
+          event_id: eventId,
+          user_id: user.id,
+          status: 'registered'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success!",
+        description: "Successfully registered for the event.",
+      });
+      
+      fetchUserRegistrations();
+    } catch (error: any) {
+      console.error('Error registering for event:', error);
+      toast({
+        title: "Registration Failed",
+        description: error.message || "Failed to register for event. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const categories = [
-    { id: 'all', name: 'All Events', count: 25 },
-    { id: 'workshop', name: 'Workshops', count: 8 },
-    { id: 'competition', name: 'Competitions', count: 10 },
-    { id: 'talk', name: 'Tech Talks', count: 5 },
-    { id: 'networking', name: 'Networking', count: 2 }
+    { id: 'all', name: 'All Events', count: events.length },
+    { id: 'workshop', name: 'Workshops', count: events.filter(e => e.category.toLowerCase() === 'workshop').length },
+    { id: 'competition', name: 'Competitions', count: events.filter(e => e.category.toLowerCase() === 'competition').length },
+    { id: 'talk', name: 'Tech Talks', count: events.filter(e => e.category.toLowerCase() === 'talk').length },
+    { id: 'networking', name: 'Networking', count: events.filter(e => e.category.toLowerCase() === 'networking').length }
   ];
 
-  const allEvents = [
-    {
-      title: "AI/ML Workshop",
-      description: "Hands-on workshop on building AI models with TensorFlow and PyTorch. Learn from industry experts and build real-world projects.",
-      date: "March 15, 2024",
-      time: "10:00 AM - 4:00 PM",
-      location: "Tech Lab A",
-      attendees: 45,
-      maxAttendees: 60,
-      category: "Workshop",
-      status: "upcoming" as const,
-    },
-    {
-      title: "Hackathon Finals",
-      description: "24-hour coding marathon to build innovative solutions. Prizes worth ₹50,000 up for grabs! Team up and create the next big thing.",
-      date: "March 16, 2024",
-      time: "6:00 PM onwards",
-      location: "Main Auditorium",
-      attendees: 120,
-      maxAttendees: 150,
-      category: "Competition",
-      status: "upcoming" as const,
-    },
-    {
-      title: "Tech Talk: Future of Web3",
-      description: "Industry leaders discuss blockchain, DeFi, and the future of decentralized applications. Get insights into the next internet revolution.",
-      date: "March 17, 2024",
-      time: "2:00 PM - 3:30 PM",
-      location: "Conference Hall",
-      attendees: 80,
-      maxAttendees: 100,
-      category: "Talk",
-      status: "upcoming" as const,
-    },
-    {
-      title: "Cybersecurity Workshop",
-      description: "Learn ethical hacking techniques and cybersecurity best practices. Hands-on penetration testing and security auditing.",
-      date: "March 15, 2024",
-      time: "2:00 PM - 6:00 PM",
-      location: "Security Lab",
-      attendees: 30,
-      maxAttendees: 40,
-      category: "Workshop",
-      status: "upcoming" as const,
-    },
-    {
-      title: "Mobile App Development",
-      description: "Build cross-platform mobile apps with React Native and Flutter. From zero to app store in one day.",
-      date: "March 16, 2024",
-      time: "9:00 AM - 5:00 PM",
-      location: "Mobile Dev Lab",
-      attendees: 25,
-      maxAttendees: 35,
-      category: "Workshop",
-      status: "upcoming" as const,
-    },
-    {
-      title: "Code Golf Championship",
-      description: "Write the shortest code to solve programming challenges. Test your algorithmic skills and code optimization.",
-      date: "March 17, 2024",
-      time: "10:00 AM - 12:00 PM",
-      location: "Programming Arena",
-      attendees: 60,
-      maxAttendees: 80,
-      category: "Competition",
-      status: "upcoming" as const,
-    },
-    {
-      title: "Startup Pitch Competition",
-      description: "Present your startup ideas to industry veterans and VCs. Win funding and mentorship opportunities.",
-      date: "March 17, 2024",
-      time: "3:00 PM - 6:00 PM",
-      location: "Innovation Hub",
-      attendees: 40,
-      maxAttendees: 50,
-      category: "Competition",
-      status: "upcoming" as const,
-    },
-    {
-      title: "AR/VR Experience Zone",
-      description: "Explore the latest in augmented and virtual reality. Try cutting-edge headsets and immersive experiences.",
-      date: "March 15, 2024",
-      time: "All Day",
-      location: "VR Arena",
-      attendees: 200,
-      maxAttendees: 300,
-      category: "Workshop",
-      status: "ongoing" as const,
-    }
-  ];
-
-  const filteredEvents = allEvents.filter(event => {
+  const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchTerm.toLowerCase());
+                         event.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || 
                            event.category.toLowerCase() === selectedCategory;
     
     return matchesSearch && matchesCategory;
+  }).map(event => {
+    const isRegistered = registrations.some(reg => reg.event_id === event.id);
+    const startDate = new Date(event.start_date);
+    const endDate = new Date(event.end_date);
+    
+    return {
+      ...event,
+      date: startDate.toLocaleDateString(),
+      time: `${startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      attendees: 0, // This would come from a count of registrations
+      maxAttendees: event.max_attendees,
+      isRegistered,
+      onRegister: () => handleRegister(event.id)
+    };
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="pt-20 pb-16 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading events...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -211,9 +237,8 @@ const Events = () => {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredEvents.map((event, index) => (
                 <EventCard
-                  key={index}
+                  key={event.id || index}
                   {...event}
-                  onRegister={() => console.log(`Registering for ${event.title}`)}
                 />
               ))}
             </div>

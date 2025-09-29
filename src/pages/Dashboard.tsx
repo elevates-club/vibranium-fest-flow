@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navigation from '@/components/layout/Navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { useAuth } from '@/hooks/useAuth';
+import { useEvents } from '@/hooks/useEvents';
+import { supabase } from '@/integrations/supabase/client';
+import { Link } from 'react-router-dom';
 import { 
   User,
   Trophy,
@@ -18,45 +22,108 @@ import {
 } from 'lucide-react';
 
 const Dashboard = () => {
-  const [userRole] = useState<'participant' | 'organizer' | 'staff'>('participant');
+  const { user } = useAuth();
+  const { events, registrations, getUserEvents } = useEvents();
+  const [profile, setProfile] = useState<any>(null);
+  const [userPoints, setUserPoints] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  // Mock user data
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+      fetchUserPoints();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      setProfile(data);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserPoints = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_points')
+        .select('points')
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      const totalPoints = data?.reduce((sum, record) => sum + record.points, 0) || 0;
+      setUserPoints(totalPoints);
+    } catch (error) {
+      console.error('Error fetching points:', error);
+    }
+  };
+
+  const userEvents = getUserEvents();
+  const upcomingEvents = userEvents.filter(event => new Date(event.start_date) > new Date());
+  const completedEvents = userEvents.filter(event => new Date(event.end_date) < new Date());
+
   const userData = {
-    name: "Alex Thompson",
-    email: "alex@techfest.com",
-    department: "Computer Science",
-    year: "3rd Year",
-    points: 1250,
-    level: "Tech Explorer",
-    eventsAttended: 8,
-    badges: ['Early Bird', 'Workshop Warrior', 'Social Butterfly'],
-    rank: 42,
+    name: profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : user?.email?.split('@')[0] || 'User',
+    email: user?.email || '',
+    department: profile?.department || 'Not specified',
+    year: profile?.year ? `${profile.year}${profile.year === 1 ? 'st' : profile.year === 2 ? 'nd' : profile.year === 3 ? 'rd' : 'th'} Year` : 'Not specified',
+    points: userPoints,
+    level: userPoints >= 1500 ? "Tech Master" : userPoints >= 1000 ? "Tech Expert" : userPoints >= 500 ? "Tech Explorer" : "Tech Novice",
+    eventsAttended: completedEvents.length,
+    badges: ['Early Bird', 'Workshop Warrior'], // These would be calculated based on actual achievements
+    rank: Math.floor(Math.random() * 100) + 1, // This would be calculated from actual leaderboard
     totalParticipants: 500
   };
 
-  const myEvents = [
-    {
-      title: "AI/ML Workshop",
-      date: "March 15, 2024",
-      time: "10:00 AM",
-      status: "upcoming",
-      location: "Tech Lab A"
-    },
-    {
-      title: "Hackathon Finals",
-      date: "March 16, 2024", 
-      time: "6:00 PM",
-      status: "registered",
-      location: "Main Auditorium"
-    },
-    {
-      title: "Cybersecurity Talk",
-      date: "March 14, 2024",
-      time: "2:00 PM", 
-      status: "completed",
-      location: "Conference Hall"
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="pt-20 pb-16 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const myEvents = userEvents.slice(0, 3).map(event => {
+    const startDate = new Date(event.start_date);
+    const endDate = new Date(event.end_date);
+    const now = new Date();
+    
+    let status = 'registered';
+    if (endDate < now) {
+      status = 'completed';
+    } else if (startDate <= now && endDate >= now) {
+      status = 'ongoing';
+    } else {
+      status = 'upcoming';
     }
-  ];
+
+    return {
+      title: event.title,
+      date: startDate.toLocaleDateString(),
+      time: startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status,
+      location: event.location
+    };
+  });
 
   const recentActivity = [
     { type: 'points', message: 'Earned 50 points for attending Cybersecurity Talk', time: '2 hours ago' },
@@ -150,7 +217,9 @@ const Dashboard = () => {
                     <Calendar className="w-5 h-5 mr-2 text-primary" />
                     My Events
                   </h2>
-                  <Button variant="outline" size="sm">View All</Button>
+                  <Link to="/events">
+                    <Button variant="outline" size="sm">View All</Button>
+                  </Link>
                 </div>
                 
                 <div className="space-y-4">

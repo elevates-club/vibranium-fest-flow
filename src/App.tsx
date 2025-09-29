@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
+import { ProtectedRoute } from "./components/ui/ProtectedRoute";
 import Home from "./pages/Home";
 import Events from "./pages/Events";
 import Dashboard from "./pages/Dashboard";
@@ -24,9 +25,17 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/events" element={<Events />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
             <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/organizer" element={<Organizer />} />
+            <Route path="/organizer" element={
+              <ProtectedRoute>
+                <Organizer />
+              </ProtectedRoute>
+            } />
             <Route path="/auth" element={<Auth />} />
             <Route path="/login" element={<Auth />} />
             <Route path="/register" element={<Auth />} />
