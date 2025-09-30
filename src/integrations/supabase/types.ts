@@ -163,6 +163,42 @@ export type Database = {
         }
         Relationships: []
       }
+      temp_logins: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          is_active: boolean | null
+          last_login: string | null
+          name: string
+          password_hash: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          is_active?: boolean | null
+          last_login?: string | null
+          name: string
+          password_hash: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_login?: string | null
+          name?: string
+          password_hash?: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
       user_points: {
         Row: {
           created_at: string
@@ -224,6 +260,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      authenticate_temp_user: {
+        Args: { p_email: string; p_password: string }
+        Returns: {
+          is_valid: boolean
+          user_email: string
+          user_id: string
+          user_name: string
+          user_role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
