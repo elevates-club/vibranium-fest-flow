@@ -66,7 +66,7 @@ const Auth = () => {
           email: validatedData.email,
           password: validatedData.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}/dashboard`,
             data: {
               first_name: validatedData.firstName,
               last_name: validatedData.lastName,
@@ -88,10 +88,14 @@ const Auth = () => {
       } else {
         const validatedData = signInSchema.parse(formData);
 
-        const { error } = await supabase.auth.signInWithPassword({
+        console.log('Attempting sign in with:', validatedData.email);
+        
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: validatedData.email,
           password: validatedData.password,
         });
+
+        console.log('Sign in response:', { data, error });
 
         if (error) throw error;
 
