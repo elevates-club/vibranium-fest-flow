@@ -67,13 +67,13 @@ async function sendTestEmail(transporter) {
   };
 
   const mailOptions = {
-    from: `"Vibranium TechFest" <${emailConfig.auth.user}>`,
+    from: `"Vibranium 5.0" <${emailConfig.auth.user}>`,
     to: testUserDetails.email,
     subject: `🎉 Test Email: Registration Confirmed - ${testEventDetails.title}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; text-align: center;">
-          <h1 style="margin: 0; font-size: 28px;">🎯 Vibranium TechFest 2024</h1>
+          <h1 style="margin: 0; font-size: 28px;">🎯 Vibranium 5.0</h1>
           <h2 style="margin: 10px 0; font-size: 24px;">Test Email - Registration Confirmed!</h2>
         </div>
         
@@ -101,7 +101,7 @@ async function sendTestEmail(transporter) {
       </div>
     `,
     text: `
-      🎯 Vibranium TechFest 2024 - Test Email
+      🎯 Vibranium 5.0 - Test Email
 
       Hello ${testUserDetails.firstName} ${testUserDetails.lastName},
 
@@ -118,7 +118,7 @@ async function sendTestEmail(transporter) {
       If you received this email, the Nodemailer integration is working perfectly! 🎉
 
       Best regards,
-      Vibranium TechFest Team
+      Vibranium 5.0 Team
     `
   };
 

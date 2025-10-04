@@ -54,7 +54,7 @@ npm run dev:full
 - ✅ **Mobile Responsive**
 
 ### Email Template Includes:
-- 🎯 Vibranium TechFest branding
+- 🎯 Vibranium 5.0 branding
 - 📅 Event date and time
 - 📍 Location details
 - 👥 Registration status
@@ -237,7 +237,7 @@ CMD ["npm", "run", "email-server"]
 Once set up, users will receive beautiful confirmation emails like this:
 
 ```
-🎯 Vibranium TechFest 2024 - Registration Confirmed!
+🎯 Vibranium 5.0 - Registration Confirmed!
 
 Hello John Doe,
 

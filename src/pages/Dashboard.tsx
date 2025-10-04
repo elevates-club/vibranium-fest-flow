@@ -67,7 +67,7 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         <Navigation />
         <div className="pt-16 sm:pt-20 pb-12 sm:pb-16 flex items-center justify-center">
           <div className="text-center">
@@ -126,7 +126,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       <Navigation />
       
       <div className="pt-16 sm:pt-20 pb-12 sm:pb-16">
@@ -148,7 +148,7 @@ const Dashboard = () => {
                userData.primaryRole === 'Volunteer' ? 'Volunteer Dashboard - Complete your assigned tasks' :
                userData.primaryRole === 'Coordinator' ? 'Coordinator Dashboard - Coordinate event logistics' :
                userData.primaryRole === 'Staff' ? 'Staff Dashboard - Support techfest operations' :
-               'Here\'s your Techfest journey so far. Keep participating to climb the leaderboard!'}
+               'Here\'s your Vibranium 5.0 journey so far. Keep participating to climb the leaderboard!'}
             </p>
             {userData.roles.length > 1 && (
               <div className="mt-2">

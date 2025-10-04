@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ui/ProtectedRoute";
+import Footer from "./components/layout/Footer";
 import Events from "./pages/Events";
 import Dashboard from "./pages/Dashboard";
 import Organizer from "./pages/Organizer";
@@ -21,30 +22,35 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Events />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/organizer" element={
-              <ProtectedRoute requiredRoles={['organizer', 'admin']}>
-                <Organizer />
-              </ProtectedRoute>
-            } />
-            <Route path="/volunteer" element={
-              <ProtectedRoute requiredRoles={['volunteer', 'admin']}>
-                <VolunteerDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/login" element={<Auth />} />
-            <Route path="/register" element={<Auth />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <div className="min-h-screen flex flex-col">
+            <div className="flex-1">
+              <Routes>
+                <Route path="/" element={<Events />} />
+                <Route path="/events" element={<Events />} />
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organizer" element={
+                  <ProtectedRoute requiredRoles={['organizer', 'admin']}>
+                    <Organizer />
+                  </ProtectedRoute>
+                } />
+                <Route path="/volunteer" element={
+                  <ProtectedRoute requiredRoles={['volunteer', 'admin']}>
+                    <VolunteerDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/login" element={<Auth />} />
+                <Route path="/register" element={<Auth />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+            <Footer />
+          </div>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

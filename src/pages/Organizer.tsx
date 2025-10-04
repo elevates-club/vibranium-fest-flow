@@ -191,7 +191,7 @@ const Organizer = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         <Navigation />
         
         <div className="pt-16 sm:pt-20 pb-12 sm:pb-16">
@@ -202,7 +202,7 @@ const Organizer = () => {
                 Organizer <span className="text-primary">Dashboard</span>
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground">
-                Manage events, volunteers, and analytics for Vibranium TechFest 2024
+                Manage events, volunteers, and analytics for Vibranium 5.0
               </p>
             </div>
 

@@ -322,14 +322,14 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-3 sm:p-4">
-      <div className="w-full max-w-md">
-        <Card className="bg-gradient-card border-border">
-          <CardHeader className="text-center pb-4 sm:pb-6">
-            <CardTitle className="text-xl sm:text-2xl font-bold bg-gradient-hero bg-clip-text text-transparent">
+    <div className="min-h-screen bg-background flex items-center justify-center p-2 sm:p-4">
+      <div className="w-full max-w-sm sm:max-w-md mx-auto">
+        <Card className="bg-gradient-card border-border shadow-lg">
+          <CardHeader className="text-center pb-3 sm:pb-6 px-4 sm:px-6 pt-4 sm:pt-6">
+            <CardTitle className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-hero bg-clip-text text-transparent">
               {isSignUp ? 'Join Vibranium' : isForgotPassword ? 'Reset Password' : 'Welcome Back'}
             </CardTitle>
-            <CardDescription className="text-sm sm:text-base">
+            <CardDescription className="text-xs sm:text-sm md:text-base mt-1 sm:mt-2">
               {isSignUp 
                 ? 'Create your account to start your techfest journey'
                 : isForgotPassword 
@@ -339,78 +339,78 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           
-          <CardContent className="px-4 sm:px-6">
+          <CardContent className="px-3 sm:px-4 md:px-6 pb-4 sm:pb-6">
             <form onSubmit={isForgotPassword ? handleForgotPassword : handleSubmit} className="space-y-3 sm:space-y-4">
               {isSignUp && (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName" className="text-sm font-medium">First Name</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
+                    <div className="space-y-1 sm:space-y-2">
+                      <Label htmlFor="firstName" className="text-xs sm:text-sm font-medium">First Name</Label>
                       <div className="relative">
-                        <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <User className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                         <Input
                           id="firstName"
                           name="firstName"
                           value={formData.firstName}
                           onChange={handleInputChange}
-                          className="pl-10 h-11"
+                          className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
                           placeholder="John"
                           required
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName" className="text-sm font-medium">Last Name</Label>
+                    <div className="space-y-1 sm:space-y-2">
+                      <Label htmlFor="lastName" className="text-xs sm:text-sm font-medium">Last Name</Label>
                       <Input
                         id="lastName"
                         name="lastName"
                         value={formData.lastName}
                         onChange={handleInputChange}
-                        className="h-11"
+                        className="h-9 sm:h-10 md:h-11 text-sm sm:text-base"
                         placeholder="Doe"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-sm font-medium">Phone Number</Label>
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label htmlFor="phone" className="text-xs sm:text-sm font-medium">Phone Number</Label>
                     <div className="relative">
-                      <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Phone className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                       <Input
                         id="phone"
                         name="phone"
                         type="tel"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        className="pl-10 h-11"
+                        className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
                         placeholder="+91 9876543210"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="department" className="text-sm font-medium">Department</Label>
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label htmlFor="department" className="text-xs sm:text-sm font-medium">Department</Label>
                     <div className="relative">
-                      <GraduationCap className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <GraduationCap className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                       <Input
                         id="department"
                         name="department"
                         value={formData.department}
                         onChange={handleInputChange}
-                        className="pl-10 h-11"
+                        className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
                         placeholder="Computer Science"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="year" className="text-sm font-medium">Year</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
+                    <div className="space-y-1 sm:space-y-2">
+                      <Label htmlFor="year" className="text-xs sm:text-sm font-medium">Year</Label>
                       <div className="relative">
-                        <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Calendar className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                         <Input
                           id="year"
                           name="year"
@@ -419,21 +419,21 @@ const Auth = () => {
                           max="5"
                           value={formData.year}
                           onChange={handleInputChange}
-                          className="pl-10 h-11"
+                          className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
                           required
                         />
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="college" className="text-sm font-medium">College</Label>
+                    <div className="space-y-1 sm:space-y-2">
+                      <Label htmlFor="college" className="text-xs sm:text-sm font-medium">College</Label>
                       <div className="relative">
-                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <MapPin className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                         <Input
                           id="college"
                           name="college"
                           value={formData.college}
                           onChange={handleInputChange}
-                          className="pl-10 h-11"
+                          className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
                           placeholder="ABC College"
                           required
                         />
@@ -443,17 +443,17 @@ const Auth = () => {
                 </>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+              <div className="space-y-1 sm:space-y-2">
+                <Label htmlFor="email" className="text-xs sm:text-sm font-medium">Email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Mail className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                   <Input
                     id="email"
                     name="email"
                     type="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="pl-10 h-11"
+                    className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
                     placeholder="your@email.com"
                     required
                   />
@@ -461,17 +461,17 @@ const Auth = () => {
               </div>
 
               {!isForgotPassword && (
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                <div className="space-y-1 sm:space-y-2">
+                  <Label htmlFor="password" className="text-xs sm:text-sm font-medium">Password</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Lock className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                     <Input
                       id="password"
                       name="password"
                       type="password"
                       value={formData.password}
                       onChange={handleInputChange}
-                      className="pl-10 h-11"
+                      className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
                       placeholder="••••••••"
                       required
                     />
@@ -481,7 +481,7 @@ const Auth = () => {
 
               <Button
                 type="submit"
-                className="w-full h-12 text-base font-medium"
+                className="w-full h-10 sm:h-11 md:h-12 text-sm sm:text-base font-medium mt-4 sm:mt-6"
                 variant="hero"
                 disabled={isLoading}
               >
@@ -489,33 +489,33 @@ const Auth = () => {
                   "Processing..."
                 ) : isSignUp ? (
                   <>
-                    <UserPlus className="w-5 h-5 mr-2" />
+                    <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                     Create Account
                   </>
                 ) : isForgotPassword ? (
                   <>
-                    <KeyRound className="w-5 h-5 mr-2" />
+                    <KeyRound className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                     Send Reset Link
                   </>
                 ) : (
                   <>
-                    <LogIn className="w-5 h-5 mr-2" />
+                    <LogIn className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                     Sign In
                   </>
                 )}
               </Button>
             </form>
 
-            <div className="mt-4 sm:mt-6 text-center space-y-3">
+            <div className="mt-3 sm:mt-4 md:mt-6 text-center space-y-2 sm:space-y-3">
               {!isForgotPassword && (
                 <>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     {isSignUp ? 'Already have an account?' : "Don't have an account?"}
                   </p>
                   <Button
                     variant="link"
                     onClick={() => setIsSignUp(!isSignUp)}
-                    className="text-primary hover:text-primary-glow text-base font-medium"
+                    className="text-primary hover:text-primary-glow text-sm sm:text-base font-medium p-1 sm:p-2"
                   >
                     {isSignUp ? 'Sign In' : 'Create Account'}
                   </Button>
@@ -523,11 +523,11 @@ const Auth = () => {
               )}
               
               {!isSignUp && !isForgotPassword && (
-                <div className="pt-2">
+                <div className="pt-1 sm:pt-2">
                   <Button
                     variant="link"
                     onClick={() => setIsPasswordResetModalOpen(true)}
-                    className="text-sm text-muted-foreground hover:text-primary"
+                    className="text-xs sm:text-sm text-muted-foreground hover:text-primary p-1 sm:p-2"
                   >
                     Forgot your password?
                   </Button>
@@ -535,22 +535,22 @@ const Auth = () => {
               )}
 
               {isForgotPassword && (
-                <div className="pt-2">
+                <div className="pt-1 sm:pt-2">
                   <Button
                     variant="link"
                     onClick={() => setIsForgotPassword(false)}
-                    className="text-sm text-muted-foreground hover:text-primary flex items-center"
+                    className="text-xs sm:text-sm text-muted-foreground hover:text-primary flex items-center p-1 sm:p-2"
                   >
-                    <ArrowLeft className="w-4 h-4 mr-1" />
+                    <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                     Back to Sign In
                   </Button>
                 </div>
               )}
             </div>
 
-            <div className="mt-4 text-center">
+            <div className="mt-3 sm:mt-4 text-center">
               <Link to="/events">
-                <Button variant="ghost" size="sm" className="text-sm">
+                <Button variant="ghost" size="sm" className="text-xs sm:text-sm p-2 sm:p-3">
                   ← Back to Events
                 </Button>
               </Link>

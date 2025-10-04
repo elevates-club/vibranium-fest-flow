@@ -137,7 +137,7 @@ export const emailTemplates = {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">🎯 Vibranium TechFest 2024</div>
+            <div class="logo">🎯 Vibranium 5.0</div>
             <h1 class="title">Registration Confirmed!</h1>
           </div>
 
@@ -207,7 +207,7 @@ export const emailTemplates = {
           </div>
 
           <div class="footer">
-            <p>Thank you for participating in Vibranium TechFest 2024!</p>
+            <p>Thank you for participating in Vibranium 5.0!</p>
             <p>If you have any questions, please contact us at support@vibranium.com</p>
             <p style="margin-top: 20px; font-size: 12px; opacity: 0.6;">
               This is an automated email. Please do not reply to this message.
@@ -218,7 +218,7 @@ export const emailTemplates = {
       </html>
     `,
     text: `
-      🎯 Vibranium TechFest 2024 - Registration Confirmed!
+      🎯 Vibranium 5.0 - Registration Confirmed!
 
       Hello ${userDetails.firstName} ${userDetails.lastName},
 
@@ -242,10 +242,10 @@ export const emailTemplates = {
       - Check your email for any updates or changes
       - Contact organizers if you have any questions
 
-      Thank you for participating in Vibranium TechFest 2024!
+      Thank you for participating in Vibranium 5.0!
 
       Best regards,
-      Vibranium TechFest Team
+      Vibranium 5.0 Team
     `
   })
 };
@@ -258,7 +258,7 @@ export const emailService = {
       const template = emailTemplates.eventRegistration(eventDetails, userDetails);
       
       const mailOptions = {
-        from: `"Vibranium TechFest" <${emailConfig.auth.user}>`,
+        from: `"Vibranium 5.0" <${emailConfig.auth.user}>`,
         to: userDetails.email,
         subject: template.subject,
         html: template.html,

@@ -103,13 +103,14 @@ export type Database = {
           created_by: string | null
           department: string | null
           description: string | null
-          end_date: string
+          end_date: string | null
           id: string
           image_url: string | null
           is_featured: boolean | null
           location: string
           max_attendees: number
           points_reward: number | null
+          registration_closed: boolean | null
           registration_fee: number | null
           start_date: string
           status: string | null
@@ -122,13 +123,14 @@ export type Database = {
           created_by?: string | null
           department?: string | null
           description?: string | null
-          end_date: string
+          end_date?: string | null
           id?: string
           image_url?: string | null
           is_featured?: boolean | null
           location: string
           max_attendees?: number
           points_reward?: number | null
+          registration_closed?: boolean | null
           registration_fee?: number | null
           start_date: string
           status?: string | null
@@ -141,13 +143,14 @@ export type Database = {
           created_by?: string | null
           department?: string | null
           description?: string | null
-          end_date?: string
+          end_date?: string | null
           id?: string
           image_url?: string | null
           is_featured?: boolean | null
           location?: string
           max_attendees?: number
           points_reward?: number | null
+          registration_closed?: boolean | null
           registration_fee?: number | null
           start_date?: string
           status?: string | null
@@ -369,6 +372,10 @@ export type Database = {
           user_name: string
           user_role: Database["public"]["Enums"]["app_role"]
         }[]
+      }
+      get_event_registration_count: {
+        Args: { event_id_param: string }
+        Returns: number
       }
       has_role: {
         Args: {

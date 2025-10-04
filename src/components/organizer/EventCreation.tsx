@@ -298,7 +298,7 @@ export default function EventCreation() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Event Management</h2>
-          <p className="text-muted-foreground">Create and manage events for Vibranium TechFest 2024</p>
+          <p className="text-muted-foreground">Create and manage events for Vibranium 5.0</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -311,7 +311,7 @@ export default function EventCreation() {
             <DialogHeader>
               <DialogTitle>{isEditMode ? 'Edit Event' : 'Create New Event'}</DialogTitle>
               <DialogDescription>
-                {isEditMode ? 'Update the event details below' : 'Fill in the details to create a new event for Vibranium TechFest 2024'}
+                {isEditMode ? 'Update the event details below' : 'Fill in the details to create a new event for Vibranium 5.0'}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">

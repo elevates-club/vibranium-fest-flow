@@ -322,7 +322,7 @@ const Events = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="bg-background">
         <Navigation />
         <div className="pt-20 pb-16 flex items-center justify-center">
           <div className="text-center">
@@ -335,7 +335,7 @@ const Events = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       <Navigation />
       
       <div className="pt-16 sm:pt-20 pb-12 sm:pb-16">
