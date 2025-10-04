@@ -15,6 +15,7 @@
     "dev:full": "concurrently \"npm run dev\" \"npm run email-server\"",
     "test:email": "node test-email.js",
     "generate-qr-codes": "node generate-qr-codes.js",
+    "regenerate-qr-codes": "node regenerate-qr-codes.js",
     "check-qr-status": "node check-qr-status.js",
     "generate-qr-service": "node generate-qr-codes-service.js"
   },
@@ -61,6 +62,7 @@
     "dotenv": "^17.2.3",
     "embla-carousel-react": "^8.6.0",
     "express": "^5.1.0",
+    "html2canvas": "^1.4.1",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",

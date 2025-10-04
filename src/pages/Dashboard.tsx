@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Navigation from '@/components/layout/Navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useEvents } from '@/hooks/useEvents';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,6 +25,7 @@ const Dashboard = () => {
   const { events, registrations, getUserEvents } = useEvents();
   const [profile, setProfile] = useState<any>(null);
   const [showDigitalPass, setShowDigitalPass] = useState(false);
+  const [showAllEvents, setShowAllEvents] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -83,7 +85,7 @@ const Dashboard = () => {
     );
   }
 
-  const myEvents = userEvents.slice(0, 3).map(event => {
+  const myEvents = userEvents.map(event => {
     const startDate = new Date(event.start_date);
     const endDate = event.end_date ? new Date(event.end_date) : null;
     const now = new Date();
@@ -298,9 +300,13 @@ const Dashboard = () => {
                     <Calendar className="w-5 h-5 mr-2 text-primary" />
                     My Events
                   </h2>
-                  <Link to="/events">
-                    <Button variant="outline" size="sm">View All</Button>
-                  </Link>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowAllEvents(true)}
+                  >
+                    View All ({myEvents.length})
+                  </Button>
                 </div>
                 
                 <div className="space-y-4">
@@ -330,6 +336,54 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* All Events Modal */}
+      <Dialog open={showAllEvents} onOpenChange={setShowAllEvents}>
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Calendar className="w-5 h-5 mr-2 text-primary" />
+              All My Registered Events ({myEvents.length})
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            {myEvents.map((event, index) => (
+              <div key={index} className="flex items-center justify-between p-4 bg-background/50 rounded-lg border border-border/50">
+                <div className="flex-1">
+                  <h3 className="font-medium text-foreground">{event.title}</h3>
+                  <div className="flex items-center text-sm text-muted-foreground mt-1">
+                    <Clock className="w-4 h-4 mr-1" />
+                    <span>{event.date} at {event.time}</span>
+                    <MapPin className="w-4 h-4 ml-3 mr-1" />
+                    <span>{event.location}</span>
+                  </div>
+                </div>
+                <span 
+                  className={`text-sm px-2 py-1 rounded ${
+                    event.status === 'upcoming' 
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
+                      : event.status === 'completed'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                      : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                  }`}
+                >
+                  {event.status === 'upcoming' ? 'Upcoming' : 
+                   event.status === 'completed' ? 'Completed' : 'Registered'}
+                </span>
+              </div>
+            ))}
+            
+            {myEvents.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No events registered yet</p>
+                <p className="text-sm">Visit the Events page to register for events</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

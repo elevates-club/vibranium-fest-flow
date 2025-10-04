@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Download, Share2, MapPin, Calendar, User, QrCode } from 'lucide-react';
 import { useQRCode } from '@/hooks/useQRCode';
 import { useAuth } from '@/hooks/useAuth';
+import html2canvas from 'html2canvas';
 
 interface DigitalPassProps {
   eventId?: string;
@@ -23,6 +24,68 @@ const DigitalPass: React.FC<DigitalPassProps> = ({
 }) => {
   const { user } = useAuth();
   const { qrCodeData, isLoading, downloadQRCode, shareQRCode } = useQRCode();
+  const passRef = useRef<HTMLDivElement>(null);
+
+  const downloadFullPass = async () => {
+    if (!passRef.current || !qrCodeData) return;
+
+    try {
+      const canvas = await html2canvas(passRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        allowTaint: true
+      });
+
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = `vibranium-pass-${qrCodeData.participantId}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading full pass:', error);
+      // Fallback to QR code download
+      downloadQRCode();
+    }
+  };
+
+  const shareFullPass = async () => {
+    if (!passRef.current || !qrCodeData) return;
+
+    try {
+      const canvas = await html2canvas(passRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        allowTaint: true
+      });
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+
+        const file = new File([blob], `vibranium-pass-${qrCodeData.participantId}.png`, {
+          type: 'image/png',
+        });
+
+        if (navigator.share && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'My Vibranium 5.0 Digital Pass',
+            text: 'Check out my digital pass for Vibranium 5.0!',
+            files: [file],
+          });
+        } else {
+          // Fallback to copying to clipboard
+          await navigator.clipboard.writeText(window.location.href);
+          alert('Pass link copied to clipboard!');
+        }
+      });
+    } catch (error) {
+      console.error('Error sharing full pass:', error);
+      // Fallback to QR code share
+      shareQRCode();
+    }
+  };
 
   if (isLoading) {
     return (
@@ -38,7 +101,7 @@ const DigitalPass: React.FC<DigitalPassProps> = ({
   return (
     <Card className={`w-full max-w-sm mx-auto overflow-hidden ${className}`}>
       {/* Main Pass Design */}
-      <div className="relative">
+      <div className="relative" ref={passRef}>
         {/* Left Section - Event Info */}
         <div className="bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 p-6 text-white relative overflow-hidden">
           {/* Background Pattern */}
@@ -104,7 +167,7 @@ const DigitalPass: React.FC<DigitalPassProps> = ({
                   <img 
                     src={qrCodeData.qrCodeDataURL} 
                     alt="QR Code" 
-                    className="w-32 h-32"
+                    className="w-24 h-24"
                   />
                 </div>
               )}
@@ -117,24 +180,24 @@ const DigitalPass: React.FC<DigitalPassProps> = ({
       <div className="p-4 bg-gray-50 border-t">
         <div className="flex gap-2">
           <Button 
-            onClick={downloadQRCode}
+            onClick={downloadFullPass}
             variant="outline" 
             size="sm" 
             className="flex-1"
             disabled={!qrCodeData}
           >
             <Download className="w-4 h-4 mr-2" />
-            Download
+            Download Pass
           </Button>
           <Button 
-            onClick={shareQRCode}
+            onClick={shareFullPass}
             variant="outline" 
             size="sm" 
             className="flex-1"
             disabled={!qrCodeData}
           >
             <Share2 className="w-4 h-4 mr-2" />
-            Share
+            Share Pass
           </Button>
         </div>
       </div>

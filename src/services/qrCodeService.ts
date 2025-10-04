@@ -29,13 +29,13 @@ export class QRCodeService {
 
     try {
       const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData), {
-        width: 256,
-        margin: 2,
+        width: 200,
+        margin: 1,
         color: {
           dark: '#000000',
           light: '#FFFFFF'
         },
-        errorCorrectionLevel: 'M'
+        errorCorrectionLevel: 'L'
       });
 
       return qrCodeDataURL;
@@ -67,13 +67,13 @@ export class QRCodeService {
 
     try {
       const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrData), {
-        width: 256,
-        margin: 2,
+        width: 200,
+        margin: 1,
         color: {
           dark: '#000000',
           light: '#FFFFFF'
         },
-        errorCorrectionLevel: 'M'
+        errorCorrectionLevel: 'L'
       });
 
       return qrCodeDataURL;
