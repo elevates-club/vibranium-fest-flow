@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  userRoles: string[];
   signOut: () => Promise<void>;
 }
 
@@ -13,6 +14,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
+  userRoles: [],
   signOut: async () => {},
 });
 
@@ -28,6 +30,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+
+  const fetchUserRoles = async (userId: string) => {
+    try {
+      // Get roles from user_roles table
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+      
+      if (error) {
+        console.error('Error fetching user roles:', error);
+        // Fallback: try to get role from user metadata
+        const session = await supabase.auth.getSession();
+        if (session.data.session?.user?.user_metadata?.role) {
+          setUserRoles([session.data.session.user.user_metadata.role]);
+          return;
+        }
+        setUserRoles(['participant']);
+        return;
+      }
+      
+      const roles = data?.map(item => item.role) || [];
+      setUserRoles(roles);
+    } catch (error) {
+      console.error('Error fetching user roles:', error);
+      setUserRoles([]);
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener
@@ -35,6 +66,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchUserRoles(session.user.id);
+        } else {
+          setUserRoles([]);
+        }
         setLoading(false);
       }
     );
@@ -43,6 +79,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserRoles(session.user.id);
+      } else {
+        setUserRoles([]);
+      }
       setLoading(false);
     });
 
@@ -57,6 +98,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     user,
     session,
     loading,
+    userRoles,
     signOut,
   };
 

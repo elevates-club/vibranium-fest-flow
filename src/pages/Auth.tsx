@@ -90,12 +90,138 @@ const Auth = () => {
 
         console.log('Attempting sign in with:', validatedData.email);
         
+        // Check if this is a test user (hardcoded for now)
+        const testUsers = [
+          { email: 'admin@vibranium.com', password: '123456', role: 'admin', name: 'Admin User' },
+          { email: 'organizer@vibranium.com', password: '123456', role: 'organizer', name: 'Event Organizer' },
+          { email: 'volunteer@vibranium.com', password: '123456', role: 'volunteer', name: 'Volunteer Helper' },
+          { email: 'coordinator@vibranium.com', password: '123456', role: 'coordinator', name: 'Event Coordinator' },
+          { email: 'staff@vibranium.com', password: '123456', role: 'staff', name: 'Staff Member' },
+          { email: 'participant@vibranium.com', password: '123456', role: 'participant', name: 'Regular Participant' }
+        ];
+
+        const testUser = testUsers.find(user => 
+          user.email === validatedData.email && user.password === validatedData.password
+        );
+
+        console.log('Test user check:', { testUser });
+
+        if (testUser) {
+          // This is a test user - create a real Supabase user
+          console.log('Creating Supabase user for test account:', testUser.email);
+          
+          try {
+            // First try to sign in with existing user
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: testUser.email,
+              password: testUser.password,
+            });
+
+            if (!signInError && signInData.user) {
+              console.log('Test user signed in successfully:', signInData.user);
+              
+              // Add role to user_roles table if not exists
+              const { error: roleError } = await supabase
+                .from('user_roles')
+                .upsert({
+                  user_id: signInData.user.id,
+                  role: testUser.role
+                }, {
+                  onConflict: 'user_id,role'
+                });
+
+              if (roleError) {
+                console.warn('Could not add role:', roleError.message);
+                // Try to update the existing participant role
+                const { error: updateError } = await supabase
+                  .from('user_roles')
+                  .update({ role: testUser.role })
+                  .eq('user_id', signInData.user.id)
+                  .eq('role', 'participant');
+                
+                if (updateError) {
+                  console.warn('Could not update role:', updateError.message);
+                }
+              }
+
+              toast({
+                title: "Login Successful!",
+                description: `Welcome back, ${testUser.name}!`,
+              });
+              
+              navigate('/dashboard');
+              return;
+            }
+
+            // If sign in failed, try to create the user
+            console.log('Sign in failed, creating new user...');
+            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+              email: testUser.email,
+              password: testUser.password,
+              options: {
+                data: {
+                  first_name: testUser.name.split(' ')[0],
+                  last_name: testUser.name.split(' ').slice(1).join(' '),
+                  role: testUser.role
+                }
+              }
+            });
+
+            if (signUpError) {
+              console.error('Error creating test user:', signUpError);
+              throw new Error('Failed to create test user account');
+            }
+
+            if (signUpData.user) {
+              console.log('Test user created successfully:', signUpData.user);
+              
+              // Add role to user_roles table
+              const { error: roleError } = await supabase
+                .from('user_roles')
+                .upsert({
+                  user_id: signUpData.user.id,
+                  role: testUser.role
+                }, {
+                  onConflict: 'user_id,role'
+                });
+
+              if (roleError) {
+                console.warn('Could not add role:', roleError.message);
+                // Try to update the existing participant role
+                const { error: updateError } = await supabase
+                  .from('user_roles')
+                  .update({ role: testUser.role })
+                  .eq('user_id', signUpData.user.id)
+                  .eq('role', 'participant');
+                
+                if (updateError) {
+                  console.warn('Could not update role:', updateError.message);
+                }
+              }
+
+              toast({
+                title: "Account Created!",
+                description: `Welcome, ${testUser.name}! Your test account has been created.`,
+              });
+              
+              navigate('/dashboard');
+              return;
+            }
+
+          } catch (error) {
+            console.error('Error with test user authentication:', error);
+            throw new Error('Failed to authenticate test user');
+          }
+        }
+
+        // If not a temp user, try Supabase Auth
+        console.log('Not a temp user, trying Supabase Auth...');
         const { data, error } = await supabase.auth.signInWithPassword({
           email: validatedData.email,
           password: validatedData.password,
         });
 
-        console.log('Sign in response:', { data, error });
+        console.log('Supabase Auth response:', { data, error });
 
         if (error) throw error;
 

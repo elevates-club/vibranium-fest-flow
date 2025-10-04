@@ -4,6 +4,8 @@ import EventCard from '@/components/ui/EventCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -12,7 +14,9 @@ import {
   Filter, 
   Calendar,
   MapPin,
-  Users 
+  Users,
+  Mail,
+  CheckCircle
 } from 'lucide-react';
 
 const Events = () => {
@@ -21,6 +25,15 @@ const Events = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRegistrationDialogOpen, setIsRegistrationDialogOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [registrationForm, setRegistrationForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    department: '',
+    year: ''
+  });
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -28,18 +41,61 @@ const Events = () => {
     fetchEvents();
     if (user) {
       fetchUserRegistrations();
+      // Pre-fill registration form with user data
+      setRegistrationForm({
+        name: user.user_metadata?.first_name ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`.trim() : '',
+        email: user.email || '',
+        phone: user.user_metadata?.phone || '',
+        department: user.user_metadata?.department || '',
+        year: user.user_metadata?.year || ''
+      });
     }
   }, [user]);
 
   const fetchEvents = async () => {
     try {
-      const { data, error } = await supabase
+      console.log('Fetching events...');
+      
+      // Fetch events first
+      const { data: eventsData, error: eventsError } = await supabase
         .from('events')
         .select('*')
         .order('start_date', { ascending: true });
       
-      if (error) throw error;
-      setEvents(data || []);
+      if (eventsError) {
+        console.error('Events fetch error:', eventsError);
+        throw eventsError;
+      }
+      
+      console.log('Events fetched:', eventsData);
+      
+      // Fetch registration counts for each event
+      const processedEvents = await Promise.all(
+        eventsData?.map(async (event) => {
+          console.log(`Fetching registration count for event: ${event.title} (ID: ${event.id})`);
+          
+          // Try a different approach - get all registrations and count them
+          const { data: registrations, error: countError } = await supabase
+            .from('event_registrations')
+            .select('id')
+            .eq('event_id', event.id);
+          
+          if (countError) {
+            console.error(`Count error for event ${event.id}:`, countError);
+          }
+          
+          const count = registrations?.length || 0;
+          console.log(`Registration count for ${event.title}: ${count}`);
+          
+          return {
+            ...event,
+            attendees: count
+          };
+        }) || []
+      );
+      
+      console.log('Processed events:', processedEvents);
+      setEvents(processedEvents);
     } catch (error) {
       console.error('Error fetching events:', error);
       toast({
@@ -68,7 +124,7 @@ const Events = () => {
     }
   };
 
-  const handleRegister = async (eventId: string) => {
+  const handleRegisterClick = (event: any) => {
     if (!user) {
       toast({
         title: "Authentication Required",
@@ -78,23 +134,63 @@ const Events = () => {
       return;
     }
 
+    // Check if registration is closed (from localStorage)
+    const existingStatuses = JSON.parse(localStorage.getItem('eventRegistrationStatus') || '[]');
+    const eventStatus = existingStatuses.find((status: any) => status.eventId === event.id);
+    const isRegistrationClosed = eventStatus?.registrationClosed || false;
+
+    if (isRegistrationClosed) {
+      toast({
+        title: "Registration Closed",
+        description: "Registration for this event is currently closed.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSelectedEvent(event);
+    setIsRegistrationDialogOpen(true);
+  };
+
+  const handleRegistrationSubmit = async () => {
+    if (!user || !selectedEvent) return;
+
     try {
-      const { error } = await supabase
+      console.log('Submitting registration for event:', selectedEvent.title, 'User:', user.id);
+      
+      // Register for the event - only include fields that exist in the database
+      const { data: registrationData, error: registrationError } = await supabase
         .from('event_registrations')
         .insert({
-          event_id: eventId,
+          event_id: selectedEvent.id,
           user_id: user.id,
           status: 'registered'
-        });
+        })
+        .select();
 
-      if (error) throw error;
+      if (registrationError) {
+        console.error('Registration error:', registrationError);
+        throw registrationError;
+      }
+
+      console.log('Registration successful:', registrationData);
+
+      // Send email notification (simulated for now)
+      await sendRegistrationEmail(selectedEvent, registrationForm);
 
       toast({
         title: "Success!",
-        description: "Successfully registered for the event.",
+        description: "Successfully registered for the event. Check your email for confirmation.",
       });
       
+      // Refresh data
+      console.log('Refreshing events data...');
+      fetchEvents();
       fetchUserRegistrations();
+      
+      // Close dialog
+      setIsRegistrationDialogOpen(false);
+      setSelectedEvent(null);
     } catch (error: any) {
       console.error('Error registering for event:', error);
       toast({
@@ -103,6 +199,25 @@ const Events = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const sendRegistrationEmail = async (event: any, userData: any) => {
+    // This would integrate with an email service like SendGrid, Resend, etc.
+    // For now, we'll simulate the email sending
+    console.log('Sending registration email:', {
+      to: userData.email,
+      subject: `Registration Confirmation - ${event.title}`,
+      event: event,
+      user: userData
+    });
+    
+    // In a real implementation, you would call your email service here
+    // Example: await emailService.send({
+    //   to: userData.email,
+    //   subject: `Registration Confirmation - ${event.title}`,
+    //   template: 'event-registration',
+    //   data: { event, user: userData }
+    // });
   };
 
   const categories = [
@@ -235,12 +350,33 @@ const Events = () => {
             </div>
             
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredEvents.map((event, index) => (
-                <EventCard
-                  key={event.id || index}
-                  {...event}
-                />
-              ))}
+              {filteredEvents.map((event, index) => {
+                const isRegistered = registrations.some(reg => reg.event_id === event.id);
+                
+                // Get registration status from localStorage
+                const existingStatuses = JSON.parse(localStorage.getItem('eventRegistrationStatus') || '[]');
+                const eventStatus = existingStatuses.find((status: any) => status.eventId === event.id);
+                const isRegistrationClosed = eventStatus?.registrationClosed || false;
+                
+                return (
+                  <EventCard
+                    key={event.id || index}
+                    title={event.title}
+                    description={event.description}
+                    date={new Date(event.start_date).toLocaleDateString()}
+                    time={`${new Date(event.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(event.end_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                    location={event.location}
+                    attendees={event.attendees || 0}
+                    maxAttendees={event.max_attendees}
+                    category={event.category}
+                    status={new Date(event.end_date) < new Date() ? 'completed' : 
+                           new Date(event.start_date) <= new Date() ? 'ongoing' : 'upcoming'}
+                    isRegistered={isRegistered}
+                    registrationClosed={isRegistrationClosed}
+                    onRegister={() => handleRegisterClick(event)}
+                  />
+                );
+              })}
             </div>
           </div>
 
@@ -263,6 +399,115 @@ const Events = () => {
           )}
         </div>
       </div>
+
+      {/* Registration Dialog */}
+      <Dialog open={isRegistrationDialogOpen} onOpenChange={setIsRegistrationDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-primary" />
+              Confirm Event Registration
+            </DialogTitle>
+            <DialogDescription>
+              Please review your details before confirming registration for <strong>{selectedEvent?.title}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedEvent && (
+            <div className="space-y-4">
+              {/* Event Details */}
+              <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                <h4 className="font-semibold">{selectedEvent.title}</h4>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    {new Date(selectedEvent.start_date).toLocaleDateString()}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    {selectedEvent.location}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    {selectedEvent.attendees || 0}/{selectedEvent.max_attendees} registered
+                  </div>
+                </div>
+              </div>
+
+              {/* Registration Form */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input
+                      id="name"
+                      value={registrationForm.name}
+                      onChange={(e) => setRegistrationForm({ ...registrationForm, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={registrationForm.email}
+                      onChange={(e) => setRegistrationForm({ ...registrationForm, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      value={registrationForm.phone}
+                      onChange={(e) => setRegistrationForm({ ...registrationForm, phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="year">Year</Label>
+                    <Input
+                      id="year"
+                      value={registrationForm.year}
+                      onChange={(e) => setRegistrationForm({ ...registrationForm, year: e.target.value })}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="department">Department</Label>
+                  <Input
+                    id="department"
+                    value={registrationForm.department}
+                    onChange={(e) => setRegistrationForm({ ...registrationForm, department: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsRegistrationDialogOpen(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleRegistrationSubmit}
+                  className="flex-1 bg-primary hover:bg-primary/90"
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Confirm Registration
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

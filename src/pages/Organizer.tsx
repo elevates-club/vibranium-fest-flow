@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Navigation from '@/components/layout/Navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import VolunteerManagement from '@/components/organizer/VolunteerManagement';
 import EventCreation from '@/components/organizer/EventCreation';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { useEvents } from '@/hooks/useEvents';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Users, 
   Calendar,
@@ -25,33 +28,49 @@ import {
 
 const Organizer = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [recentEvents, setRecentEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { events } = useEvents();
 
-  const recentEvents = [
-    {
-      id: 1,
-      title: "AI/ML Workshop",
-      registrations: 45,
-      checkins: 42,
-      status: "ongoing",
-      qrCustomized: true
-    },
-    {
-      id: 2,
-      title: "Hackathon Finals",
-      registrations: 120,
-      checkins: 115,
-      status: "upcoming",
-      qrCustomized: false
-    },
-    {
-      id: 3,
-      title: "Tech Talk: Web3",
-      registrations: 80,
-      checkins: 78,
-      status: "completed",
-      qrCustomized: true
+  const fetchRecentEvents = useCallback(async () => {
+    try {
+      // Get events with registration counts
+      const eventsWithStats = await Promise.all(
+        events.map(async (event) => {
+          const { data: registrations } = await supabase
+            .from('event_registrations')
+            .select('*')
+            .eq('event_id', event.id);
+
+          const { data: checkins } = await supabase
+            .from('event_registrations')
+            .select('*')
+            .eq('event_id', event.id)
+            .eq('checked_in', true);
+
+          return {
+            id: event.id,
+            title: event.title,
+            registrations: registrations?.length || 0,
+            checkins: checkins?.length || 0,
+            status: new Date(event.end_date) < new Date() ? 'completed' : 
+                   new Date(event.start_date) <= new Date() ? 'ongoing' : 'upcoming',
+            qrCustomized: false // Would need to track this in database
+          };
+        })
+      );
+
+      setRecentEvents(eventsWithStats.slice(0, 5)); // Show only recent 5
+    } catch (error) {
+      console.error('Error fetching recent events:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  }, [events]);
+
+  useEffect(() => {
+    fetchRecentEvents();
+  }, [fetchRecentEvents]);
 
   const departments = [
     { name: "Computer Science", events: 8, participants: 234, coordinator: "Dr. Smith" },

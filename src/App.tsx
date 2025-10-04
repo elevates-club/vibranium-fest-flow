@@ -33,12 +33,12 @@ const App = () => (
             } />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/organizer" element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRoles={['organizer', 'admin']}>
                 <Organizer />
               </ProtectedRoute>
             } />
             <Route path="/volunteer" element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRoles={['volunteer', 'admin']}>
                 <VolunteerDashboard />
               </ProtectedRoute>
             } />

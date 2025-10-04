@@ -13,6 +13,7 @@ interface EventCardProps {
   category: string;
   status: 'upcoming' | 'ongoing' | 'completed';
   isRegistered?: boolean;
+  registrationClosed?: boolean;
   onRegister?: () => void;
 }
 
@@ -27,6 +28,7 @@ const EventCard = ({
   category,
   status,
   isRegistered = false,
+  registrationClosed = false,
   onRegister
 }: EventCardProps) => {
   const getStatusColor = () => {
@@ -110,6 +112,10 @@ const EventCard = ({
         ) : isRegistered ? (
           <Button variant="secondary" className="w-full">
             Registered ✓
+          </Button>
+        ) : registrationClosed ? (
+          <Button variant="outline" disabled className="w-full">
+            Registration Closed
           </Button>
         ) : attendees >= maxAttendees ? (
           <Button variant="outline" disabled className="w-full">

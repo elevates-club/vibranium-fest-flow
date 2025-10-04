@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navigation from '@/components/layout/Navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Trophy, 
   Users, 
@@ -17,102 +18,80 @@ import {
 
 const Leaderboard = () => {
   const [selectedCategory, setSelectedCategory] = useState('overall');
+  const [topParticipants, setTopParticipants] = useState<any[]>([]);
+  const [topDepartments, setTopDepartments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const topParticipants = [
-    {
-      rank: 1,
-      name: "Alex Chen",
-      department: "Computer Science",
-      points: 2850,
-      badges: 12,
-      streak: 7,
-      events: 15,
-      avatar: "AC"
-    },
-    {
-      rank: 2,
-      name: "Priya Sharma",
-      department: "Electronics",
-      points: 2720,
-      badges: 10,
-      streak: 5,
-      events: 13,
-      avatar: "PS"
-    },
-    {
-      rank: 3,
-      name: "Mohammed Ali",
-      department: "Mechanical",
-      points: 2650,
-      badges: 11,
-      streak: 8,
-      events: 14,
-      avatar: "MA"
-    },
-    {
-      rank: 4,
-      name: "Sarah Johnson",
-      department: "Computer Science",
-      points: 2480,
-      badges: 9,
-      streak: 4,
-      events: 12,
-      avatar: "SJ"
-    },
-    {
-      rank: 5,
-      name: "Raj Patel",
-      department: "Civil",
-      points: 2350,
-      badges: 8,
-      streak: 6,
-      events: 11,
-      avatar: "RP"
-    }
-  ];
+  useEffect(() => {
+    fetchLeaderboard();
+  }, []);
 
-  const topDepartments = [
-    {
-      rank: 1,
-      name: "Computer Science",
-      totalPoints: 45890,
-      participants: 156,
-      avgPoints: 294,
-      events: 28
-    },
-    {
-      rank: 2,
-      name: "Electronics",
-      totalPoints: 38750,
-      participants: 132,
-      avgPoints: 293,
-      events: 25
-    },
-    {
-      rank: 3,
-      name: "Mechanical",
-      totalPoints: 32640,
-      participants: 118,
-      avgPoints: 277,
-      events: 22
-    },
-    {
-      rank: 4,
-      name: "Civil",
-      totalPoints: 28950,
-      participants: 105,
-      avgPoints: 276,
-      events: 19
-    },
-    {
-      rank: 5,
-      name: "Chemical",
-      totalPoints: 24680,
-      participants: 89,
-      avgPoints: 277,
-      events: 17
+  const fetchLeaderboard = async () => {
+    try {
+      // Get users with their points from profiles
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(`
+          user_id,
+          first_name,
+          last_name,
+          department,
+          points,
+          year
+        `)
+        .order('points', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      const participants = data?.map((profile, index) => ({
+        rank: index + 1,
+        name: `${profile.first_name} ${profile.last_name || ''}`.trim(),
+        department: profile.department || 'Not specified',
+        points: profile.points || 0,
+        badges: 0, // Would need to calculate from achievements
+        streak: 0, // Would need to calculate from activity
+        events: 0, // Would need to calculate from registrations
+        avatar: `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase()
+      })) || [];
+
+      setTopParticipants(participants);
+
+      // Calculate department stats
+      const departmentStats = participants.reduce((acc: any, participant) => {
+        const dept = participant.department;
+        if (!acc[dept]) {
+          acc[dept] = {
+            name: dept,
+            totalPoints: 0,
+            participants: 0,
+            events: 0
+          };
+        }
+        acc[dept].totalPoints += participant.points;
+        acc[dept].participants += 1;
+        return acc;
+      }, {});
+
+      const departments = Object.values(departmentStats)
+        .map((dept: any, index) => ({
+          rank: index + 1,
+          name: dept.name,
+          totalPoints: dept.totalPoints,
+          participants: dept.participants,
+          avgPoints: Math.round(dept.totalPoints / dept.participants),
+          events: 0 // Would need to calculate from events
+        }))
+        .sort((a: any, b: any) => b.totalPoints - a.totalPoints)
+        .slice(0, 5);
+
+      setTopDepartments(departments);
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   const getRankIcon = (rank: number) => {
     switch (rank) {

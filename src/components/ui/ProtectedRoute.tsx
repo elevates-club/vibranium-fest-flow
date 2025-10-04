@@ -5,10 +5,11 @@ import { useAuth } from '@/hooks/useAuth';
 interface ProtectedRouteProps {
   children: ReactNode;
   redirectTo?: string;
+  requiredRoles?: string[];
 }
 
-export const ProtectedRoute = ({ children, redirectTo = '/auth' }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
+export const ProtectedRoute = ({ children, redirectTo = '/auth', requiredRoles }: ProtectedRouteProps) => {
+  const { user, loading, userRoles } = useAuth();
 
   if (loading) {
     return (
@@ -23,6 +24,14 @@ export const ProtectedRoute = ({ children, redirectTo = '/auth' }: ProtectedRout
 
   if (!user) {
     return <Navigate to={redirectTo} replace />;
+  }
+
+  // Check role-based access if required roles are specified
+  if (requiredRoles && requiredRoles.length > 0) {
+    const hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
+    if (!hasRequiredRole) {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return <>{children}</>;

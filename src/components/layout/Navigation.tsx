@@ -17,15 +17,34 @@ import {
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, signOut, userRoles } = useAuth();
 
-  const navigation = [
+  // Base navigation items for all users
+  const baseNavigation = [
     { name: 'Events', href: '/events', icon: Calendar },
     { name: 'Dashboard', href: '/dashboard', icon: User },
     { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
-    { name: 'Organizer', href: '/organizer', icon: Users },
-    { name: 'Volunteer', href: '/volunteer', icon: Users },
   ];
+
+  // Role-based navigation items
+  const getRoleBasedNavigation = () => {
+    const roleNav = [];
+    
+    // Only show Organizer link if user has organizer or admin role
+    if (userRoles.includes('organizer') || userRoles.includes('admin')) {
+      roleNav.push({ name: 'Organizer', href: '/organizer', icon: Users });
+    }
+    
+    // Only show Volunteer link if user has volunteer or admin role
+    if (userRoles.includes('volunteer') || userRoles.includes('admin')) {
+      roleNav.push({ name: 'Volunteer', href: '/volunteer', icon: Users });
+    }
+    
+    return roleNav;
+  };
+
+  // Combine base navigation with role-based navigation
+  const navigation = [...baseNavigation, ...getRoleBasedNavigation()];
 
   const isActive = (path: string) => location.pathname === path;
 

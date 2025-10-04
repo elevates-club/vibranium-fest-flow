@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import EventCard from '@/components/ui/EventCard';
 import Navigation from '@/components/layout/Navigation';
 import heroImage from '@/assets/hero-techfest.jpg';
+import { useEvents } from '@/hooks/useEvents';
 import { 
   Zap, 
   Trophy, 
@@ -17,41 +18,20 @@ import {
 } from 'lucide-react';
 
 const Home = () => {
-  const featuredEvents = [
-    {
-      title: "AI/ML Workshop",
-      description: "Hands-on workshop on building AI models with TensorFlow and PyTorch. Learn from industry experts.",
-      date: "March 15, 2024",
-      time: "10:00 AM - 4:00 PM",
-      location: "Tech Lab A",
-      attendees: 45,
-      maxAttendees: 60,
-      category: "Workshop",
-      status: "upcoming" as const,
-    },
-    {
-      title: "Hackathon Finals",
-      description: "24-hour coding marathon to build innovative solutions. Prizes worth ₹50,000 up for grabs!",
-      date: "March 16, 2024",
-      time: "6:00 PM onwards",
-      location: "Main Auditorium",
-      attendees: 120,
-      maxAttendees: 150,
-      category: "Competition",
-      status: "upcoming" as const,
-    },
-    {
-      title: "Tech Talk: Future of Web3",
-      description: "Industry leaders discuss blockchain, DeFi, and the future of decentralized applications.",
-      date: "March 17, 2024",
-      time: "2:00 PM - 3:30 PM",
-      location: "Conference Hall",
-      attendees: 80,
-      maxAttendees: 100,
-      category: "Talk",
-      status: "upcoming" as const,
-    }
-  ];
+  const { events, loading } = useEvents();
+  
+  // Get featured events (first 3 events from database)
+  const featuredEvents = events.slice(0, 3).map(event => ({
+    title: event.title,
+    description: event.description || '',
+    date: new Date(event.start_date).toLocaleDateString(),
+    time: `${new Date(event.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(event.end_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+    location: event.location,
+    attendees: 0, // This would need to be calculated from registrations
+    maxAttendees: event.max_attendees,
+    category: event.category,
+    status: 'upcoming' as const,
+  }));
 
   const features = [
     {

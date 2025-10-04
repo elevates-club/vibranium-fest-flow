@@ -18,11 +18,14 @@ import {
   MapPin,
   TrendingUp,
   Award,
-  Zap
+  Zap,
+  Users,
+  BarChart3,
+  ClipboardList
 } from 'lucide-react';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, userRoles } = useAuth();
   const { events, registrations, getUserEvents } = useEvents();
   const [profile, setProfile] = useState<any>(null);
   const [userPoints, setUserPoints] = useState(0);
@@ -83,9 +86,15 @@ const Dashboard = () => {
     points: userPoints,
     level: userPoints >= 1500 ? "Tech Master" : userPoints >= 1000 ? "Tech Expert" : userPoints >= 500 ? "Tech Explorer" : "Tech Novice",
     eventsAttended: completedEvents.length,
-    badges: ['Early Bird', 'Workshop Warrior'], // These would be calculated based on actual achievements
-    rank: Math.floor(Math.random() * 100) + 1, // This would be calculated from actual leaderboard
-    totalParticipants: 500
+    badges: [], // Will be calculated from actual achievements
+    rank: 0, // Will be calculated from actual leaderboard
+    totalParticipants: 0,
+    roles: userRoles,
+    primaryRole: userRoles.includes('admin') ? 'Admin' : 
+                 userRoles.includes('organizer') ? 'Organizer' : 
+                 userRoles.includes('volunteer') ? 'Volunteer' : 
+                 userRoles.includes('coordinator') ? 'Coordinator' : 
+                 userRoles.includes('staff') ? 'Staff' : 'Participant'
   };
 
   if (loading) {
@@ -125,12 +134,7 @@ const Dashboard = () => {
     };
   });
 
-  const recentActivity = [
-    { type: 'points', message: 'Earned 50 points for attending Cybersecurity Talk', time: '2 hours ago' },
-    { type: 'badge', message: 'Unlocked "Workshop Warrior" badge', time: '1 day ago' },
-    { type: 'registration', message: 'Registered for AI/ML Workshop', time: '2 days ago' },
-    { type: 'achievement', message: 'Reached Level: Tech Explorer', time: '3 days ago' }
-  ];
+  const recentActivity = []; // Will be populated from actual user activity
 
   const getActivityIcon = (type: string) => {
     switch (type) {
@@ -160,13 +164,83 @@ const Dashboard = () => {
           
           {/* Welcome Header */}
           <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">
-              Welcome back, <span className="text-primary">{userData.name}</span>!
-            </h1>
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-3xl md:text-4xl font-bold">
+                Welcome back, <span className="text-primary">{userData.name}</span>!
+              </h1>
+              <Badge variant="outline" className="text-sm px-3 py-1">
+                {userData.primaryRole}
+              </Badge>
+            </div>
             <p className="text-muted-foreground">
-              Here's your Techfest journey so far. Keep participating to climb the leaderboard!
+              {userData.primaryRole === 'Admin' ? 'Admin Dashboard - Manage the entire techfest platform' :
+               userData.primaryRole === 'Organizer' ? 'Organizer Dashboard - Create and manage events' :
+               userData.primaryRole === 'Volunteer' ? 'Volunteer Dashboard - Complete your assigned tasks' :
+               userData.primaryRole === 'Coordinator' ? 'Coordinator Dashboard - Coordinate event logistics' :
+               userData.primaryRole === 'Staff' ? 'Staff Dashboard - Support techfest operations' :
+               'Here\'s your Techfest journey so far. Keep participating to climb the leaderboard!'}
             </p>
+            {userData.roles.length > 1 && (
+              <div className="mt-2">
+                <p className="text-xs text-muted-foreground">
+                  Additional roles: {userData.roles.filter(role => role !== userData.primaryRole.toLowerCase()).join(', ')}
+                </p>
+              </div>
+            )}
           </div>
+
+          {/* Role-specific Quick Actions */}
+          {(userData.primaryRole === 'Organizer' || userData.primaryRole === 'Admin') && (
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold mb-4 flex items-center">
+                <Calendar className="w-5 h-5 mr-2 text-primary" />
+                Quick Actions
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Link to="/organizer">
+                  <Button variant="hero" className="w-full h-20 flex flex-col items-center justify-center">
+                    <Calendar className="w-6 h-6 mb-2" />
+                    <span className="text-sm">Manage Events</span>
+                  </Button>
+                </Link>
+                <Link to="/organizer">
+                  <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center">
+                    <Users className="w-6 h-6 mb-2" />
+                    <span className="text-sm">Manage Volunteers</span>
+                  </Button>
+                </Link>
+                <Link to="/events">
+                  <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center">
+                    <BarChart3 className="w-6 h-6 mb-2" />
+                    <span className="text-sm">View Analytics</span>
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {(userData.primaryRole === 'Volunteer' || userData.primaryRole === 'Admin') && (
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold mb-4 flex items-center">
+                <Users className="w-5 h-5 mr-2 text-primary" />
+                Volunteer Tasks
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Link to="/volunteer">
+                  <Button variant="hero" className="w-full h-20 flex flex-col items-center justify-center">
+                    <ClipboardList className="w-6 h-6 mb-2" />
+                    <span className="text-sm">View Assignments</span>
+                  </Button>
+                </Link>
+                <Link to="/volunteer">
+                  <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center">
+                    <QrCode className="w-6 h-6 mb-2" />
+                    <span className="text-sm">QR Check-in</span>
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          )}
 
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
