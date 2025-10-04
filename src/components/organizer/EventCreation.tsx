@@ -80,8 +80,8 @@ export default function EventCreation() {
           description: formData.description,
           category: formData.category,
           location: formData.location,
-          start_date: formData.start_date,
-          end_date: formData.end_date || formData.start_date, // Use start_date as fallback if end_date is empty
+          start_date: new Date(formData.start_date).toISOString(), // Convert to ISO string for proper timezone handling
+          end_date: formData.end_date ? new Date(formData.end_date).toISOString() : new Date(formData.start_date).toISOString(), // Convert to ISO string
           max_attendees: formData.max_attendees,
           registration_fee: formData.registration_fee,
           points_reward: formData.points_reward || 0, // Default to 0 if not provided
@@ -119,8 +119,8 @@ export default function EventCreation() {
           description: formData.description,
           category: formData.category,
           location: formData.location,
-          start_date: formData.start_date,
-          end_date: formData.end_date || formData.start_date, // Use start_date as fallback if end_date is empty
+          start_date: new Date(formData.start_date).toISOString(), // Convert to ISO string for proper timezone handling
+          end_date: formData.end_date ? new Date(formData.end_date).toISOString() : new Date(formData.start_date).toISOString(), // Convert to ISO string
           max_attendees: formData.max_attendees,
           registration_fee: formData.registration_fee,
           points_reward: formData.points_reward || 0, // Default to 0 if not provided

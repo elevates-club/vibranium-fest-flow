@@ -236,11 +236,12 @@ const Events = () => {
         weekday: 'short'
       });
       
-      // Format time in user's locale
+      // Format time in user's locale with explicit timezone handling
       const formattedStartTime = start.toLocaleTimeString(undefined, {
         hour: '2-digit',
         minute: '2-digit',
-        hour12: true
+        hour12: true,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone // Use user's timezone
       });
       
       let formattedTime = formattedStartTime;
@@ -252,7 +253,8 @@ const Events = () => {
           const formattedEndTime = end.toLocaleTimeString(undefined, {
             hour: '2-digit',
             minute: '2-digit',
-            hour12: true
+            hour12: true,
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone // Use user's timezone
           });
           formattedTime = `${formattedStartTime} - ${formattedEndTime}`;
         }
