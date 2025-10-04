@@ -8,8 +8,8 @@ const emailConfig = {
   port: 587,
   secure: false, // true for 465, false for other ports
   auth: {
-    user: process.env.EMAIL_USER || 'your-email@gmail.com',
-    pass: process.env.EMAIL_PASS || 'your-app-password', // Use App Password for Gmail
+    user: process.env.EMAIL_USER || 'elevates@ekc.edu.in',
+    pass: process.env.EMAIL_PASS || '', // Use App Password for Gmail
   },
 };
 
@@ -174,12 +174,6 @@ export const emailTemplates = {
               <div class="detail-item">
                 <span class="detail-icon">💰</span>
                 <span class="detail-text"><strong>Registration Fee:</strong> ₹${eventDetails.registrationFee}</span>
-              </div>
-              ` : ''}
-              ${eventDetails.pointsReward > 0 ? `
-              <div class="detail-item">
-                <span class="detail-icon">⭐</span>
-                <span class="detail-text"><strong>Points Reward:</strong> ${eventDetails.pointsReward} points</span>
               </div>
               ` : ''}
             </div>

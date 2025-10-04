@@ -179,7 +179,7 @@ const DigitalPass: React.FC<DigitalPassProps> = ({
       {/* Action Buttons */}
       <div className="p-4 bg-gray-50 border-t">
         <div className="flex gap-2">
-          <Button 
+          {/* <Button 
             onClick={downloadFullPass}
             variant="outline" 
             size="sm" 
@@ -188,8 +188,8 @@ const DigitalPass: React.FC<DigitalPassProps> = ({
           >
             <Download className="w-4 h-4 mr-2" />
             Download Pass
-          </Button>
-          <Button 
+          </Button> */}
+          {/* <Button 
             onClick={shareFullPass}
             variant="outline" 
             size="sm" 
@@ -198,7 +198,7 @@ const DigitalPass: React.FC<DigitalPassProps> = ({
           >
             <Share2 className="w-4 h-4 mr-2" />
             Share Pass
-          </Button>
+          </Button> */}
         </div>
       </div>
     </Card>
