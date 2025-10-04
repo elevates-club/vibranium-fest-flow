@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ClipboardList, QrCode, CheckCircle, Clock, MapPin } from 'lucide-react';
 import Navigation from '@/components/layout/Navigation';
@@ -110,10 +109,14 @@ export default function VolunteerDashboard() {
     const Icon = config.icon;
 
     return (
-      <Badge variant={config.variant} className="gap-1">
+      <span className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
+        status === 'assigned' ? 'bg-secondary text-secondary-foreground' :
+        status === 'in-progress' ? 'bg-primary text-primary-foreground' :
+        'bg-muted text-muted-foreground'
+      }`}>
         <Icon className="h-3 w-3" />
         {status.replace('-', ' ')}
-      </Badge>
+      </span>
     );
   };
 

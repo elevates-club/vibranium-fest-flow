@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Navigation from '@/components/layout/Navigation';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -47,39 +46,67 @@ const Organizer = () => {
 
   const fetchRecentEvents = useCallback(async () => {
     try {
+      setLoading(true);
+      
+      // Check if events array exists and is not empty
+      if (!events || events.length === 0) {
+        setRecentEvents([]);
+        return;
+      }
+
       // Get events with registration counts
       const eventsWithStats = await Promise.all(
         events.map(async (event) => {
-          const { data: registrations } = await supabase
-            .from('event_registrations')
-            .select('*')
-            .eq('event_id', event.id);
+          try {
+            const { data: registrations } = await supabase
+              .from('event_registrations')
+              .select('*')
+              .eq('event_id', event.id);
 
-          const { data: checkins } = await supabase
-            .from('event_registrations')
-            .select('*')
-            .eq('event_id', event.id)
-            .eq('checked_in', true);
+            const { data: checkins } = await supabase
+              .from('event_registrations')
+              .select('*')
+              .eq('event_id', event.id)
+              .eq('checked_in', true);
 
-          return {
-            id: event.id,
-            title: event.title,
-            registrations: registrations?.length || 0,
-            checkins: checkins?.length || 0,
-            status: new Date(event.end_date) < new Date() ? 'completed' : 
-                   new Date(event.start_date) <= new Date() ? 'ongoing' : 'upcoming',
-            qrCustomized: false // Would need to track this in database
-          };
+            return {
+              id: event.id,
+              title: event.title || 'Untitled Event',
+              registrations: registrations?.length || 0,
+              checkins: checkins?.length || 0,
+              status: event.end_date 
+                ? (new Date(event.end_date) < new Date() ? 'completed' : 
+                   new Date(event.start_date) <= new Date() ? 'ongoing' : 'upcoming')
+                : (new Date(event.start_date) <= new Date() ? 'ongoing' : 'upcoming'),
+              qrCustomized: false // Would need to track this in database
+            };
+          } catch (error) {
+            console.error('Error fetching stats for event:', event.id, error);
+            return {
+              id: event.id,
+              title: event.title || 'Untitled Event',
+              registrations: 0,
+              checkins: 0,
+              status: 'upcoming',
+              qrCustomized: false
+            };
+          }
         })
       );
 
       setRecentEvents(eventsWithStats.slice(0, 5)); // Show only recent 5
     } catch (error) {
       console.error('Error fetching recent events:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load recent events data.",
+        variant: "destructive"
+      });
+      setRecentEvents([]);
     } finally {
       setLoading(false);
     }
-  }, [events]);
+  }, [events, toast]);
 
   useEffect(() => {
     fetchRecentEvents();
@@ -163,22 +190,31 @@ const Organizer = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      
-      <div className="pt-20 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">
-              Organizer <span className="text-primary">Dashboard</span>
-            </h1>
-            <p className="text-muted-foreground">
-              Manage events, volunteers, and analytics for Vibranium TechFest 2024
-            </p>
-          </div>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        
+        <div className="pt-20 pb-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Header */}
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold mb-2">
+                Organizer <span className="text-primary">Dashboard</span>
+              </h1>
+              <p className="text-muted-foreground">
+                Manage events, volunteers, and analytics for Vibranium TechFest 2024
+              </p>
+            </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading organizer dashboard...</p>
+                </div>
+              </div>
+            ) : (
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-5 gap-2">
               <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
               <TabsTrigger value="events">Events</TabsTrigger>
@@ -242,9 +278,13 @@ const Organizer = () => {
                             </div>
                           </div>
                           <div className="flex items-center space-x-3">
-                            <Badge variant={event.status === 'ongoing' ? 'default' : event.status === 'upcoming' ? 'secondary' : 'outline'}>
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              event.status === 'ongoing' ? 'bg-primary text-primary-foreground' : 
+                              event.status === 'upcoming' ? 'bg-secondary text-secondary-foreground' : 
+                              'bg-muted text-muted-foreground'
+                            }`}>
                               {event.status}
-                            </Badge>
+                            </span>
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -374,8 +414,9 @@ const Organizer = () => {
               </Card>
             </TabsContent>
           </Tabs>
+            )}
+          </div>
         </div>
-      </div>
 
       {/* Registered Members Dialog */}
       <Dialog open={isRegisteredMembersDialogOpen} onOpenChange={setIsRegisteredMembersDialogOpen}>
@@ -458,11 +499,13 @@ const Organizer = () => {
                         <TableCell>{member.profiles?.year || 'Not provided'}</TableCell>
                         <TableCell>{member.profiles?.college || 'Not provided'}</TableCell>
                         <TableCell>
-                          <Badge 
-                            variant={member.checked_in ? 'default' : member.status === 'registered' ? 'secondary' : 'outline'}
-                          >
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            member.checked_in ? 'bg-primary text-primary-foreground' : 
+                            member.status === 'registered' ? 'bg-secondary text-secondary-foreground' : 
+                            'bg-muted text-muted-foreground'
+                          }`}>
                             {member.checked_in ? 'Checked In' : member.status || 'Registered'}
-                          </Badge>
+                          </span>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -479,7 +522,8 @@ const Organizer = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 };
 

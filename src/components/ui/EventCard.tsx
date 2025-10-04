@@ -1,6 +1,7 @@
-import { Calendar, MapPin, Users, Clock } from 'lucide-react';
+import { useState } from 'react';
+import { Calendar, MapPin, Users, Clock, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import EventDescriptionModal from './EventDescriptionModal';
 
 interface EventCardProps {
   title: string;
@@ -31,6 +32,8 @@ const EventCard = ({
   registrationClosed = false,
   onRegister
 }: EventCardProps) => {
+  const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
+
   const getStatusColor = () => {
     switch (status) {
       case 'upcoming': return 'bg-accent text-accent-foreground';
@@ -46,27 +49,33 @@ const EventCard = ({
 
   return (
     <div className="group relative bg-gradient-card rounded-xl p-6 border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-card hover:transform hover:scale-105">
-      {/* Status Badge */}
-      <div className="absolute top-4 right-4">
-        <Badge className={getStatusColor()}>
-          {status.charAt(0).toUpperCase() + status.slice(1)}
-        </Badge>
-      </div>
-
       {/* Category */}
       <div className="mb-3">
-        <Badge variant="outline" className="text-xs">
+        <span className="text-xs text-muted-foreground font-medium">
           {category}
-        </Badge>
+        </span>
       </div>
 
       {/* Title & Description */}
       <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
         {title}
       </h3>
-      <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
-        {description}
-      </p>
+      <div className="mb-4">
+        <p className="text-muted-foreground text-sm line-clamp-2">
+          {description}
+        </p>
+        {description.length > 100 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsDescriptionModalOpen(true)}
+            className="mt-2 p-0 h-auto text-primary hover:text-primary/80"
+          >
+            <Eye className="w-3 h-3 mr-1" />
+            View More
+          </Button>
+        )}
+      </div>
 
       {/* Event Details */}
       <div className="space-y-2 mb-4">
@@ -131,6 +140,22 @@ const EventCard = ({
           </Button>
         )}
       </div>
+
+      {/* Event Description Modal */}
+      <EventDescriptionModal
+        isOpen={isDescriptionModalOpen}
+        onClose={() => setIsDescriptionModalOpen(false)}
+        event={{
+          title,
+          description,
+          date,
+          time,
+          location,
+          attendees,
+          maxAttendees,
+          category
+        }}
+      />
     </div>
   );
 };

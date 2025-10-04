@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -199,7 +198,12 @@ export default function VolunteerManagement() {
       'cancelled': 'destructive'
     };
 
-    return <Badge variant={variants[status] || 'secondary'}>{status}</Badge>;
+    return <span className={`text-xs px-2 py-1 rounded ${
+      status === 'assigned' ? 'bg-secondary text-secondary-foreground' :
+      status === 'in-progress' ? 'bg-primary text-primary-foreground' :
+      status === 'completed' ? 'bg-muted text-muted-foreground' :
+      'bg-destructive text-destructive-foreground'
+    }`}>{status}</span>;
   };
 
   return (

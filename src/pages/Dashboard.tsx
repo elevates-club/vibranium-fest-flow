@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/layout/Navigation';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useEvents } from '@/hooks/useEvents';
 import { supabase } from '@/integrations/supabase/client';
@@ -82,22 +81,36 @@ const Dashboard = () => {
 
   const myEvents = userEvents.slice(0, 3).map(event => {
     const startDate = new Date(event.start_date);
-    const endDate = new Date(event.end_date);
+    const endDate = event.end_date ? new Date(event.end_date) : null;
     const now = new Date();
     
     let status = 'registered';
-    if (endDate < now) {
-      status = 'completed';
-    } else if (startDate <= now && endDate >= now) {
-      status = 'ongoing';
+    if (endDate) {
+      if (endDate < now) {
+        status = 'completed';
+      } else if (startDate <= now && endDate >= now) {
+        status = 'ongoing';
+      } else {
+        status = 'upcoming';
+      }
     } else {
-      status = 'upcoming';
+      // If no end date, only check if event has started
+      if (startDate <= now) {
+        status = 'ongoing';
+      } else {
+        status = 'upcoming';
+      }
     }
+
+    // Format time based on whether end_date exists
+    const timeString = endDate 
+      ? `${startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      : startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     return {
       title: event.title,
       date: startDate.toLocaleDateString(),
-      time: startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: timeString,
       status,
       location: event.location
     };
@@ -125,9 +138,9 @@ const Dashboard = () => {
               <h1 className="text-3xl md:text-4xl font-bold">
                 Welcome back, <span className="text-primary">{userData.name}</span>!
               </h1>
-              <Badge variant="outline" className="text-sm px-3 py-1">
+              <span className="text-sm text-muted-foreground px-3 py-1">
                 {userData.primaryRole}
-              </Badge>
+              </span>
             </div>
             <p className="text-muted-foreground">
               {userData.primaryRole === 'Admin' ? 'Admin Dashboard - Manage the entire techfest platform' :
@@ -204,7 +217,7 @@ const Dashboard = () => {
             <div className="bg-gradient-card p-6 rounded-xl border border-border">
               <div className="flex items-center justify-between mb-4">
                 <Calendar className="w-8 h-8 text-secondary" />
-                <Badge variant="outline">Active</Badge>
+                <span className="text-sm text-muted-foreground">Active</span>
               </div>
               <div className="text-2xl font-bold text-foreground">{userData.eventsAttended}</div>
               <div className="text-sm text-muted-foreground">Events Attended</div>
@@ -213,7 +226,7 @@ const Dashboard = () => {
             <div className="bg-gradient-card p-6 rounded-xl border border-border">
               <div className="flex items-center justify-between mb-4">
                 <User className="w-8 h-8 text-primary" />
-                <Badge variant="outline">Profile</Badge>
+                <span className="text-sm text-muted-foreground">Profile</span>
               </div>
               <div className="text-2xl font-bold text-foreground">{userData.department}</div>
               <div className="text-sm text-muted-foreground">Department</div>
@@ -247,12 +260,13 @@ const Dashboard = () => {
                           <span>{event.location}</span>
                         </div>
                       </div>
-                      <Badge 
-                        variant={event.status === 'completed' ? 'secondary' : 'outline'}
-                        className={getStatusColor(event.status)}
+                      <span 
+                        className={`text-sm px-2 py-1 rounded ${
+                          event.status === 'completed' ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-muted-foreground'
+                        }`}
                       >
                         {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                      </Badge>
+                      </span>
                     </div>
                   ))}
                 </div>

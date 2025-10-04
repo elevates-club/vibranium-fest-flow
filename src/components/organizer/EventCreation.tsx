@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,7 +29,7 @@ export default function EventCreation() {
     end_date: '',
     max_attendees: 50,
     registration_fee: 0,
-    points_reward: 10,
+    points_reward: 0,
     department: '',
     registration_closed: false
   });
@@ -81,10 +80,10 @@ export default function EventCreation() {
           category: formData.category,
           location: formData.location,
           start_date: formData.start_date,
-          end_date: formData.end_date,
+          end_date: formData.end_date || null, // Allow null for optional end date
           max_attendees: formData.max_attendees,
           registration_fee: formData.registration_fee,
-          points_reward: formData.points_reward,
+          points_reward: formData.points_reward || 0, // Default to 0 if not provided
           department: formData.department,
           updated_at: new Date().toISOString()
         };
@@ -120,10 +119,10 @@ export default function EventCreation() {
           category: formData.category,
           location: formData.location,
           start_date: formData.start_date,
-          end_date: formData.end_date,
+          end_date: formData.end_date || null, // Allow null for optional end date
           max_attendees: formData.max_attendees,
           registration_fee: formData.registration_fee,
-          points_reward: formData.points_reward,
+          points_reward: formData.points_reward || 0, // Default to 0 if not provided
           department: formData.department,
           created_by: user.id,
           created_at: new Date().toISOString(),
@@ -339,13 +338,12 @@ export default function EventCreation() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="end_date">End Date & Time</Label>
+                  <Label htmlFor="end_date">End Date & Time (Optional)</Label>
                   <Input
                     id="end_date"
                     type="datetime-local"
                     value={formData.end_date}
                     onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                    required
                   />
                 </div>
               </div>
@@ -386,14 +384,14 @@ export default function EventCreation() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="points_reward">Points Reward</Label>
+                  <Label htmlFor="points_reward">Points Reward (Optional)</Label>
                   <Input
                     id="points_reward"
                     type="number"
                     value={formData.points_reward}
-                    onChange={(e) => setFormData({ ...formData, points_reward: parseInt(e.target.value) })}
-                    min="1"
-                    required
+                    onChange={(e) => setFormData({ ...formData, points_reward: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    placeholder="Enter points reward (optional)"
                   />
                 </div>
               </div>
@@ -479,14 +477,14 @@ export default function EventCreation() {
                       <div className="space-y-2 flex-1">
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold text-lg">{event.title}</h3>
-                          <Badge variant="outline" className="text-xs">
+                          <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
                             {event.category}
-                          </Badge>
+                          </span>
                           {isRegistrationClosed && (
-                            <Badge variant="destructive" className="text-xs">
-                              <Lock className="w-3 h-3 mr-1" />
+                            <span className="text-xs px-2 py-1 rounded bg-destructive text-destructive-foreground flex items-center gap-1">
+                              <Lock className="w-3 h-3" />
                               Registration Closed
-                            </Badge>
+                            </span>
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">{event.description}</p>

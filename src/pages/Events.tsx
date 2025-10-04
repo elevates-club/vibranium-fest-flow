@@ -4,7 +4,6 @@ import EventCard from '@/components/ui/EventCard';
 import LoginPromptModal from '@/components/ui/LoginPromptModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
@@ -219,6 +218,53 @@ const Events = () => {
     // });
   };
 
+  // Utility function to format date and time with proper timezone handling
+  const formatEventDateTime = (startDate: string, endDate?: string | null) => {
+    try {
+      const start = new Date(startDate);
+      
+      // Check if the date is valid
+      if (isNaN(start.getTime())) {
+        return { date: 'Invalid Date', time: 'Invalid Time' };
+      }
+      
+      // Format date in user's locale
+      const formattedDate = start.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        weekday: 'short'
+      });
+      
+      // Format time in user's locale
+      const formattedStartTime = start.toLocaleTimeString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      
+      let formattedTime = formattedStartTime;
+      
+      // Add end time if available
+      if (endDate) {
+        const end = new Date(endDate);
+        if (!isNaN(end.getTime())) {
+          const formattedEndTime = end.toLocaleTimeString(undefined, {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          });
+          formattedTime = `${formattedStartTime} - ${formattedEndTime}`;
+        }
+      }
+      
+      return { date: formattedDate, time: formattedTime };
+    } catch (error) {
+      console.error('Error formatting date/time:', error);
+      return { date: 'Invalid Date', time: 'Invalid Time' };
+    }
+  };
+
   const categories = [
     { id: 'all', name: 'All Events', count: events.length },
     { id: 'workshop', name: 'Workshops', count: events.filter(e => e.category.toLowerCase() === 'workshop').length },
@@ -236,13 +282,12 @@ const Events = () => {
     return matchesSearch && matchesCategory;
   }).map(event => {
     const isRegistered = registrations.some(reg => reg.event_id === event.id);
-    const startDate = new Date(event.start_date);
-    const endDate = new Date(event.end_date);
+    const { date, time } = formatEventDateTime(event.start_date, event.end_date);
     
     return {
       ...event,
-      date: startDate.toLocaleDateString(),
-      time: `${startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      date,
+      time,
       attendees: event.attendees || 0, // Use the actual registration count from database
       maxAttendees: event.max_attendees,
       isRegistered,
@@ -308,10 +353,7 @@ const Events = () => {
                   onClick={() => setSelectedCategory(category.id)}
                   className="text-sm"
                 >
-                  {category.name}
-                  <Badge variant="secondary" className="ml-2 text-xs">
-                    {category.count}
-                  </Badge>
+                  {category.name} ({category.count})
                 </Button>
               ))}
             </div>
