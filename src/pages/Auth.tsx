@@ -264,14 +264,14 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-3 sm:p-4">
       <div className="w-full max-w-md">
         <Card className="bg-gradient-card border-border">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold bg-gradient-hero bg-clip-text text-transparent">
+          <CardHeader className="text-center pb-4 sm:pb-6">
+            <CardTitle className="text-xl sm:text-2xl font-bold bg-gradient-hero bg-clip-text text-transparent">
               {isSignUp ? 'Join Vibranium' : 'Welcome Back'}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm sm:text-base">
               {isSignUp 
                 ? 'Create your account to start your techfest journey'
                 : 'Sign in to access your dashboard and events'
@@ -279,13 +279,13 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <CardContent className="px-4 sm:px-6">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               {isSignUp && (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
+                      <Label htmlFor="firstName" className="text-sm font-medium">First Name</Label>
                       <div className="relative">
                         <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -293,19 +293,20 @@ const Auth = () => {
                           name="firstName"
                           value={formData.firstName}
                           onChange={handleInputChange}
-                          className="pl-10"
+                          className="pl-10 h-11"
                           placeholder="John"
                           required
                         />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
+                      <Label htmlFor="lastName" className="text-sm font-medium">Last Name</Label>
                       <Input
                         id="lastName"
                         name="lastName"
                         value={formData.lastName}
                         onChange={handleInputChange}
+                        className="h-11"
                         placeholder="Doe"
                         required
                       />
@@ -313,7 +314,7 @@ const Auth = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
+                    <Label htmlFor="phone" className="text-sm font-medium">Phone Number</Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -322,7 +323,7 @@ const Auth = () => {
                         type="tel"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        className="pl-10"
+                        className="pl-10 h-11"
                         placeholder="+91 9876543210"
                         required
                       />
@@ -330,7 +331,7 @@ const Auth = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="department">Department</Label>
+                    <Label htmlFor="department" className="text-sm font-medium">Department</Label>
                     <div className="relative">
                       <GraduationCap className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -338,16 +339,16 @@ const Auth = () => {
                         name="department"
                         value={formData.department}
                         onChange={handleInputChange}
-                        className="pl-10"
+                        className="pl-10 h-11"
                         placeholder="Computer Science"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="year">Year</Label>
+                      <Label htmlFor="year" className="text-sm font-medium">Year</Label>
                       <div className="relative">
                         <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -358,13 +359,13 @@ const Auth = () => {
                           max="5"
                           value={formData.year}
                           onChange={handleInputChange}
-                          className="pl-10"
+                          className="pl-10 h-11"
                           required
                         />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="college">College</Label>
+                      <Label htmlFor="college" className="text-sm font-medium">College</Label>
                       <div className="relative">
                         <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -372,7 +373,7 @@ const Auth = () => {
                           name="college"
                           value={formData.college}
                           onChange={handleInputChange}
-                          className="pl-10"
+                          className="pl-10 h-11"
                           placeholder="ABC College"
                           required
                         />
@@ -383,7 +384,7 @@ const Auth = () => {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -392,7 +393,7 @@ const Auth = () => {
                     type="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="pl-10"
+                    className="pl-10 h-11"
                     placeholder="your@email.com"
                     required
                   />
@@ -400,7 +401,7 @@ const Auth = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -409,7 +410,7 @@ const Auth = () => {
                     type="password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    className="pl-10"
+                    className="pl-10 h-11"
                     placeholder="••••••••"
                     required
                   />
@@ -418,7 +419,7 @@ const Auth = () => {
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full h-12 text-base font-medium"
                 variant="hero"
                 disabled={isLoading}
               >
@@ -426,26 +427,26 @@ const Auth = () => {
                   "Processing..."
                 ) : isSignUp ? (
                   <>
-                    <UserPlus className="w-4 h-4 mr-2" />
+                    <UserPlus className="w-5 h-5 mr-2" />
                     Create Account
                   </>
                 ) : (
                   <>
-                    <LogIn className="w-4 h-4 mr-2" />
+                    <LogIn className="w-5 h-5 mr-2" />
                     Sign In
                   </>
                 )}
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
+            <div className="mt-4 sm:mt-6 text-center space-y-3">
               <p className="text-sm text-muted-foreground">
                 {isSignUp ? 'Already have an account?' : "Don't have an account?"}
               </p>
               <Button
                 variant="link"
                 onClick={() => setIsSignUp(!isSignUp)}
-                className="text-primary hover:text-primary-glow"
+                className="text-primary hover:text-primary-glow text-base font-medium"
               >
                 {isSignUp ? 'Sign In' : 'Create Account'}
               </Button>
@@ -453,7 +454,7 @@ const Auth = () => {
 
             <div className="mt-4 text-center">
               <Link to="/events">
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="text-sm">
                   ← Back to Events
                 </Button>
               </Link>

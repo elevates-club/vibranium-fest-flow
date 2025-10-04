@@ -194,14 +194,14 @@ const Organizer = () => {
       <div className="min-h-screen bg-background">
         <Navigation />
         
-        <div className="pt-20 pb-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="pt-16 sm:pt-20 pb-12 sm:pb-16">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
             {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold mb-2">
+            <div className="mb-6 sm:mb-8">
+              <h1 className="text-2xl sm:text-3xl font-bold mb-2">
                 Organizer <span className="text-primary">Dashboard</span>
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-sm sm:text-base text-muted-foreground">
                 Manage events, volunteers, and analytics for Vibranium TechFest 2024
               </p>
             </div>
@@ -214,71 +214,86 @@ const Organizer = () => {
                 </div>
               </div>
             ) : (
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5 gap-2">
-              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-              <TabsTrigger value="events">Events</TabsTrigger>
-              <TabsTrigger value="qr-management">QR Codes</TabsTrigger>
-              <TabsTrigger value="volunteers">Volunteers</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1 sm:gap-2 h-auto">
+              <TabsTrigger value="dashboard" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
+                <span className="hidden sm:inline">Dashboard</span>
+                <span className="sm:hidden">Dash</span>
+              </TabsTrigger>
+              <TabsTrigger value="events" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
+                <span className="hidden sm:inline">Events</span>
+                <span className="sm:hidden">Events</span>
+              </TabsTrigger>
+              <TabsTrigger value="qr-management" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
+                <span className="hidden sm:inline">QR Codes</span>
+                <span className="sm:hidden">QR</span>
+              </TabsTrigger>
+              <TabsTrigger value="volunteers" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
+                <span className="hidden sm:inline">Volunteers</span>
+                <span className="sm:hidden">Vol</span>
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
+                <span className="hidden sm:inline">Analytics</span>
+                <span className="sm:hidden">Stats</span>
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="dashboard">
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {/* Quick Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                   <Card className="bg-gradient-card border-border">
-                    <CardContent className="p-4 text-center">
-                      <Calendar className="w-6 h-6 text-primary mx-auto mb-2" />
-                      <div className="text-2xl font-bold text-foreground">25</div>
-                      <div className="text-sm text-muted-foreground">Total Events</div>
+                    <CardContent className="p-3 sm:p-4 text-center">
+                      <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-primary mx-auto mb-1 sm:mb-2" />
+                      <div className="text-lg sm:text-2xl font-bold text-foreground">25</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">Total Events</div>
                     </CardContent>
                   </Card>
                   <Card className="bg-gradient-card border-border">
-                    <CardContent className="p-4 text-center">
-                      <Users className="w-6 h-6 text-secondary mx-auto mb-2" />
-                      <div className="text-2xl font-bold text-foreground">1,247</div>
-                      <div className="text-sm text-muted-foreground">Registrations</div>
+                    <CardContent className="p-3 sm:p-4 text-center">
+                      <Users className="w-5 h-5 sm:w-6 sm:h-6 text-secondary mx-auto mb-1 sm:mb-2" />
+                      <div className="text-lg sm:text-2xl font-bold text-foreground">1,247</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">Registrations</div>
                     </CardContent>
                   </Card>
                   <Card className="bg-gradient-card border-border">
-                    <CardContent className="p-4 text-center">
-                      <UserCheck className="w-6 h-6 text-accent mx-auto mb-2" />
-                      <div className="text-2xl font-bold text-foreground">89%</div>
-                      <div className="text-sm text-muted-foreground">Check-in Rate</div>
+                    <CardContent className="p-3 sm:p-4 text-center">
+                      <UserCheck className="w-5 h-5 sm:w-6 sm:h-6 text-accent mx-auto mb-1 sm:mb-2" />
+                      <div className="text-lg sm:text-2xl font-bold text-foreground">89%</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">Check-in Rate</div>
                     </CardContent>
                   </Card>
                   <Card className="bg-gradient-card border-border">
-                    <CardContent className="p-4 text-center">
-                      <BarChart3 className="w-6 h-6 text-primary mx-auto mb-2" />
-                      <div className="text-2xl font-bold text-foreground">4.8</div>
-                      <div className="text-sm text-muted-foreground">Avg Rating</div>
+                    <CardContent className="p-3 sm:p-4 text-center">
+                      <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-primary mx-auto mb-1 sm:mb-2" />
+                      <div className="text-lg sm:text-2xl font-bold text-foreground">4.8</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">Avg Rating</div>
                     </CardContent>
                   </Card>
                 </div>
 
                 {/* Recent Events */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Recent Events</CardTitle>
+                  <CardHeader className="p-3 sm:p-6">
+                    <CardTitle className="text-lg sm:text-xl">Recent Events</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
+                  <CardContent className="p-3 sm:p-6">
+                    <div className="space-y-3 sm:space-y-4">
                       {recentEvents.map((event) => (
-                        <div key={event.id} className="flex items-center justify-between p-4 bg-gradient-subtle rounded-lg border border-border">
-                          <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-2">
-                              <QrCode className={`w-5 h-5 ${event.qrCustomized ? 'text-primary' : 'text-muted-foreground'}`} />
-                              <div>
-                                <div className="font-semibold text-foreground">{event.title}</div>
-                                <div className="text-sm text-muted-foreground">
+                        <div key={event.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gradient-subtle rounded-lg border border-border gap-3 sm:gap-4">
+                          <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
+                            <div className="flex items-center space-x-2 min-w-0 flex-1">
+                              <QrCode className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${event.qrCustomized ? 'text-primary' : 'text-muted-foreground'}`} />
+                              <div className="min-w-0 flex-1">
+                                <div className="font-semibold text-foreground text-sm sm:text-base truncate">{event.title}</div>
+                                <div className="text-xs sm:text-sm text-muted-foreground">
                                   {event.registrations} registrations • {event.checkins} check-ins
                                 </div>
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center space-x-3">
-                            <span className={`text-xs px-2 py-1 rounded ${
+                          <div className="flex items-center justify-between sm:justify-end space-x-2 sm:space-x-3">
+                            <span className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
                               event.status === 'ongoing' ? 'bg-primary text-primary-foreground' : 
                               event.status === 'upcoming' ? 'bg-secondary text-secondary-foreground' : 
                               'bg-muted text-muted-foreground'
@@ -290,6 +305,7 @@ const Organizer = () => {
                               size="sm"
                               onClick={() => handleViewRegisteredMembers(event)}
                               title="View Registered Members"
+                              className="h-8 w-8 p-0"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -302,24 +318,24 @@ const Organizer = () => {
 
                 {/* Department Overview */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Department Overview</CardTitle>
+                  <CardHeader className="p-3 sm:p-6">
+                    <CardTitle className="text-lg sm:text-xl">Department Overview</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
+                  <CardContent className="p-3 sm:p-6">
+                    <div className="space-y-3 sm:space-y-4">
                       {departments.map((dept) => (
-                        <div key={dept.name} className="flex items-center justify-between p-4 bg-gradient-subtle rounded-lg border border-border">
-                          <div>
-                            <div className="font-semibold text-foreground">{dept.name}</div>
-                            <div className="text-sm text-muted-foreground">Coordinator: {dept.coordinator}</div>
+                        <div key={dept.name} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gradient-subtle rounded-lg border border-border gap-3 sm:gap-4">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-foreground text-sm sm:text-base">{dept.name}</div>
+                            <div className="text-xs sm:text-sm text-muted-foreground">Coordinator: {dept.coordinator}</div>
                           </div>
-                          <div className="flex items-center space-x-6 text-sm">
+                          <div className="flex items-center justify-between sm:justify-end space-x-4 sm:space-x-6 text-xs sm:text-sm">
                             <div className="text-center">
-                              <div className="font-bold text-primary">{dept.events}</div>
+                              <div className="font-bold text-primary text-sm sm:text-base">{dept.events}</div>
                               <div className="text-muted-foreground">Events</div>
                             </div>
                             <div className="text-center">
-                              <div className="font-bold text-secondary">{dept.participants}</div>
+                              <div className="font-bold text-secondary text-sm sm:text-base">{dept.participants}</div>
                               <div className="text-muted-foreground">Participants</div>
                             </div>
                           </div>
@@ -337,49 +353,49 @@ const Organizer = () => {
 
             <TabsContent value="qr-management">
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
+                <CardHeader className="p-3 sm:p-6">
+                  <CardTitle className="flex items-center text-lg sm:text-xl">
                     <QrCode className="w-5 h-5 mr-2" />
                     QR Code Management
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div className="grid md:grid-cols-3 gap-6">
+                <CardContent className="p-3 sm:p-6">
+                  <div className="space-y-4 sm:space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                       <Card className="bg-gradient-subtle border-border">
-                        <CardContent className="p-6 text-center">
-                          <Palette className="w-8 h-8 text-primary mx-auto mb-3" />
-                          <h3 className="font-semibold mb-2">Custom Design</h3>
-                          <p className="text-sm text-muted-foreground mb-4">
+                        <CardContent className="p-4 sm:p-6 text-center">
+                          <Palette className="w-6 h-6 sm:w-8 sm:h-8 text-primary mx-auto mb-2 sm:mb-3" />
+                          <h3 className="font-semibold text-sm sm:text-base mb-1 sm:mb-2">Custom Design</h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
                             Design unique QR codes for each event with custom colors and logos
                           </p>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" className="w-full sm:w-auto">
                             <Edit className="w-4 h-4 mr-2" />
                             Customize
                           </Button>
                         </CardContent>
                       </Card>
                       <Card className="bg-gradient-subtle border-border">
-                        <CardContent className="p-6 text-center">
-                          <Download className="w-8 h-8 text-secondary mx-auto mb-3" />
-                          <h3 className="font-semibold mb-2">Bulk Generate</h3>
-                          <p className="text-sm text-muted-foreground mb-4">
+                        <CardContent className="p-4 sm:p-6 text-center">
+                          <Download className="w-6 h-6 sm:w-8 sm:h-8 text-secondary mx-auto mb-2 sm:mb-3" />
+                          <h3 className="font-semibold text-sm sm:text-base mb-1 sm:mb-2">Bulk Generate</h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
                             Generate QR codes for all participants at once
                           </p>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" className="w-full sm:w-auto">
                             <Download className="w-4 h-4 mr-2" />
                             Generate
                           </Button>
                         </CardContent>
                       </Card>
                       <Card className="bg-gradient-subtle border-border">
-                        <CardContent className="p-6 text-center">
-                          <Settings className="w-8 h-8 text-accent mx-auto mb-3" />
-                          <h3 className="font-semibold mb-2">Security Settings</h3>
-                          <p className="text-sm text-muted-foreground mb-4">
+                        <CardContent className="p-4 sm:p-6 text-center">
+                          <Settings className="w-6 h-6 sm:w-8 sm:h-8 text-accent mx-auto mb-2 sm:mb-3" />
+                          <h3 className="font-semibold text-sm sm:text-base mb-1 sm:mb-2">Security Settings</h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
                             Configure dynamic QR codes and anti-fraud measures
                           </p>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" className="w-full sm:w-auto">
                             <Settings className="w-4 h-4 mr-2" />
                             Configure
                           </Button>

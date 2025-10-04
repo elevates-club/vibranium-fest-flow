@@ -317,31 +317,31 @@ const Events = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <div className="pt-20 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="pt-16 sm:pt-20 pb-12 sm:pb-16">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
           {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+          <div className="text-center mb-8 sm:mb-12">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4">
               All <span className="text-primary">Events</span>
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
               Discover workshops, competitions, and tech talks designed to expand your knowledge and skills.
             </p>
           </div>
 
           {/* Search and Filters */}
-          <div className="mb-8 space-y-4">
-            <div className="flex flex-col md:flex-row gap-4">
+          <div className="mb-6 sm:mb-8 space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
                   placeholder="Search events..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-11"
                 />
               </div>
-              <Button variant="outline" className="md:w-auto">
+              <Button variant="outline" className="sm:w-auto h-11">
                 <Filter className="w-4 h-4 mr-2" />
                 More Filters
               </Button>
@@ -355,9 +355,11 @@ const Events = () => {
                   variant={selectedCategory === category.id ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSelectedCategory(category.id)}
-                  className="text-sm"
+                  className="text-xs sm:text-sm h-8 sm:h-9 px-3 sm:px-4"
                 >
-                  {category.name} ({category.count})
+                  <span className="hidden sm:inline">{category.name}</span>
+                  <span className="sm:hidden">{category.name.split(' ')[0]}</span>
+                  <span className="ml-1">({category.count})</span>
                 </Button>
               ))}
             </div>
@@ -365,18 +367,18 @@ const Events = () => {
 
 
           {/* Events Grid */}
-          <div className="space-y-4">
+          <div className="space-y-4 sm:space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-semibold">
+              <h2 className="text-xl sm:text-2xl font-semibold">
                 {selectedCategory === 'all' ? 'All Events' : 
                  categories.find(c => c.id === selectedCategory)?.name} 
-                <span className="text-muted-foreground ml-2">
+                <span className="text-muted-foreground ml-2 text-base sm:text-lg">
                   ({filteredEvents.length})
                 </span>
               </h2>
             </div>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
               {filteredEvents.map((event, index) => {
                 const isRegistered = registrations.some(reg => reg.event_id === event.id);
                 

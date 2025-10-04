@@ -69,7 +69,7 @@ const Dashboard = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <div className="pt-20 pb-16 flex items-center justify-center">
+        <div className="pt-16 sm:pt-20 pb-12 sm:pb-16 flex items-center justify-center">
           <div className="text-center">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-muted-foreground">Loading dashboard...</p>
@@ -129,20 +129,20 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <div className="pt-20 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="pt-16 sm:pt-20 pb-12 sm:pb-16">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
           
           {/* Welcome Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-3xl md:text-4xl font-bold">
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">
                 Welcome back, <span className="text-primary">{userData.name}</span>!
               </h1>
-              <span className="text-sm text-muted-foreground px-3 py-1">
+              <span className="text-xs sm:text-sm text-muted-foreground px-2 sm:px-3 py-1 bg-muted rounded-full w-fit">
                 {userData.primaryRole}
               </span>
             </div>
-            <p className="text-muted-foreground">
+            <p className="text-sm sm:text-base text-muted-foreground">
               {userData.primaryRole === 'Admin' ? 'Admin Dashboard - Manage the entire techfest platform' :
                userData.primaryRole === 'Organizer' ? 'Organizer Dashboard - Create and manage events' :
                userData.primaryRole === 'Volunteer' ? 'Volunteer Dashboard - Complete your assigned tasks' :
@@ -161,12 +161,12 @@ const Dashboard = () => {
 
           {/* Role-specific Quick Actions */}
           {(userData.primaryRole === 'Organizer' || userData.primaryRole === 'Admin') && (
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold mb-4 flex items-center">
-                <Calendar className="w-5 h-5 mr-2 text-primary" />
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 flex items-center">
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-primary" />
                 Quick Actions
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 <Link to="/organizer">
                   <Button variant="hero" className="w-full h-20 flex flex-col items-center justify-center">
                     <Calendar className="w-6 h-6 mb-2" />
@@ -190,22 +190,22 @@ const Dashboard = () => {
           )}
 
           {(userData.primaryRole === 'Volunteer' || userData.primaryRole === 'Admin') && (
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold mb-4 flex items-center">
-                <Users className="w-5 h-5 mr-2 text-primary" />
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 flex items-center">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-primary" />
                 Volunteer Tasks
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <Link to="/volunteer">
-                  <Button variant="hero" className="w-full h-20 flex flex-col items-center justify-center">
-                    <ClipboardList className="w-6 h-6 mb-2" />
-                    <span className="text-sm">View Assignments</span>
+                  <Button variant="hero" className="w-full h-16 sm:h-20 flex flex-col items-center justify-center">
+                    <ClipboardList className="w-5 h-5 sm:w-6 sm:h-6 mb-1 sm:mb-2" />
+                    <span className="text-xs sm:text-sm">View Assignments</span>
                   </Button>
                 </Link>
                 <Link to="/volunteer">
-                  <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center">
-                    <QrCode className="w-6 h-6 mb-2" />
-                    <span className="text-sm">QR Check-in</span>
+                  <Button variant="outline" className="w-full h-16 sm:h-20 flex flex-col items-center justify-center">
+                    <QrCode className="w-5 h-5 sm:w-6 sm:h-6 mb-1 sm:mb-2" />
+                    <span className="text-xs sm:text-sm">QR Check-in</span>
                   </Button>
                 </Link>
               </div>
@@ -213,23 +213,23 @@ const Dashboard = () => {
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div className="bg-gradient-card p-6 rounded-xl border border-border">
-              <div className="flex items-center justify-between mb-4">
-                <Calendar className="w-8 h-8 text-secondary" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+            <div className="bg-gradient-card p-4 sm:p-6 rounded-xl border border-border">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-secondary" />
                 <span className="text-sm text-muted-foreground">Active</span>
               </div>
-              <div className="text-2xl font-bold text-foreground">{userData.eventsAttended}</div>
-              <div className="text-sm text-muted-foreground">Events Attended</div>
+              <div className="text-xl sm:text-2xl font-bold text-foreground">{userData.eventsAttended}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">Events Attended</div>
             </div>
 
-            <div className="bg-gradient-card p-6 rounded-xl border border-border">
-              <div className="flex items-center justify-between mb-4">
-                <User className="w-8 h-8 text-primary" />
+            <div className="bg-gradient-card p-4 sm:p-6 rounded-xl border border-border">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <User className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
                 <span className="text-sm text-muted-foreground">Profile</span>
               </div>
-              <div className="text-2xl font-bold text-foreground">{userData.department}</div>
-              <div className="text-sm text-muted-foreground">Department</div>
+              <div className="text-lg sm:text-xl font-bold text-foreground truncate">{userData.department}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">Department</div>
             </div>
           </div>
 

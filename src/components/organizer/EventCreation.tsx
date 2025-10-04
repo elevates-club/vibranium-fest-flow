@@ -307,15 +307,15 @@ export default function EventCreation() {
               Create Event
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{isEditMode ? 'Edit Event' : 'Create New Event'}</DialogTitle>
               <DialogDescription>
                 {isEditMode ? 'Update the event details below' : 'Fill in the details to create a new event for Vibranium TechFest 2024'}
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">Event Title</Label>
                   <Input
@@ -378,7 +378,7 @@ export default function EventCreation() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
                   <Input
@@ -402,7 +402,7 @@ export default function EventCreation() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="registration_fee">Registration Fee (₹)</Label>
                   <Input
@@ -461,11 +461,11 @@ export default function EventCreation() {
                 </div>
               )}
 
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={resetForm}>
+              <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-3 sm:pt-4">
+                <Button type="button" variant="outline" onClick={resetForm} className="w-full sm:w-auto">
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90">
+                <Button type="submit" className="w-full sm:w-auto bg-primary hover:bg-primary/90">
                   {isEditMode ? 'Update Event' : 'Create Event'}
                 </Button>
               </div>
@@ -484,8 +484,8 @@ export default function EventCreation() {
             Manage and view all events
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+        <CardContent className="p-3 sm:p-6">
+          <div className="space-y-3 sm:space-y-4 max-h-[70vh] overflow-y-auto">
             {events.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -502,58 +502,63 @@ export default function EventCreation() {
                 const isRegistrationClosed = eventStatus?.registrationClosed || false;
                 
                 return (
-                  <div key={event.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-2 flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-lg">{event.title}</h3>
-                          <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
-                            {event.category}
-                          </span>
-                          {isRegistrationClosed && (
-                            <span className="text-xs px-2 py-1 rounded bg-destructive text-destructive-foreground flex items-center gap-1">
-                              <Lock className="w-3 h-3" />
-                              Registration Closed
+                  <div key={event.id} className="border rounded-lg p-3 sm:p-4 hover:bg-muted/50 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-4">
+                      <div className="space-y-2 flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                          <h3 className="font-semibold text-base sm:text-lg truncate">{event.title}</h3>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground whitespace-nowrap">
+                              {event.category}
                             </span>
-                          )}
+                            {isRegistrationClosed && (
+                              <span className="text-xs px-2 py-1 rounded bg-destructive text-destructive-foreground flex items-center gap-1 whitespace-nowrap">
+                                <Lock className="w-3 h-3" />
+                                Registration Closed
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">{event.description}</p>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground line-clamp-3 break-words">
+                          {event.description}
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            <span>{new Date(event.start_date).toLocaleDateString()}</span>
+                            <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                            <span className="truncate">{new Date(event.start_date).toLocaleDateString()}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <MapPin className="w-4 h-4" />
-                            <span>{event.location}</span>
+                            <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                            <span className="truncate">{event.location}</span>
                           </div>
                           <div className="flex items-center gap-1">
-                            <Users className="w-4 h-4" />
-                            <span>{registrationCount}/{event.max_attendees} registered</span>
+                            <Users className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                            <span className="truncate">{registrationCount}/{event.max_attendees} registered</span>
                           </div>
                           {event.registration_fee > 0 && (
                             <div className="flex items-center gap-1">
-                              <DollarSign className="w-4 h-4" />
-                              <span>₹{event.registration_fee}</span>
+                              <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                              <span className="truncate">₹{event.registration_fee}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-1">
-                            <Star className="w-4 h-4" />
-                            <span>{event.points_reward} pts</span>
+                            <Star className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                            <span className="truncate">{event.points_reward} pts</span>
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-2 ml-4">
-                        <div className="text-right text-sm text-muted-foreground">
-                          <p className="font-medium">{event.department}</p>
-                          <p className="text-xs">{event.status}</p>
+                      <div className="flex flex-col sm:items-end gap-2 sm:ml-4">
+                        <div className="text-left sm:text-right text-xs sm:text-sm text-muted-foreground">
+                          <p className="font-medium truncate">{event.department}</p>
+                          <p className="text-xs capitalize">{event.status}</p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 justify-end sm:justify-start">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => handleEditEvent(event)}
-                            className="h-8 px-2"
+                            className="h-8 w-8 p-0"
+                            title="Edit Event"
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -561,7 +566,8 @@ export default function EventCreation() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleToggleRegistration(event.id, isRegistrationClosed)}
-                            className={`h-8 px-2 ${isRegistrationClosed ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}`}
+                            className={`h-8 w-8 p-0 ${isRegistrationClosed ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}`}
+                            title={isRegistrationClosed ? 'Open Registration' : 'Close Registration'}
                           >
                             {isRegistrationClosed ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                           </Button>
@@ -569,8 +575,9 @@ export default function EventCreation() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleDeleteEvent(event.id)}
-                            className="h-8 px-2 text-red-600 hover:text-red-700"
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
                             disabled={deletingEventId === event.id}
+                            title="Delete Event"
                           >
                             {deletingEventId === event.id ? (
                               <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
