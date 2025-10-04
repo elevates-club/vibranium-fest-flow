@@ -24,6 +24,7 @@ const Navigation = () => {
     { name: 'Dashboard', href: '/dashboard', icon: User },
     { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
     { name: 'Organizer', href: '/organizer', icon: Users },
+    { name: 'Volunteer', href: '/volunteer', icon: Users },
   ];
 
   const isActive = (path: string) => location.pathname === path;

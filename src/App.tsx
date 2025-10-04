@@ -10,6 +10,7 @@ import Events from "./pages/Events";
 import Dashboard from "./pages/Dashboard";
 import Leaderboard from "./pages/Leaderboard";
 import Organizer from "./pages/Organizer";
+import VolunteerDashboard from "./pages/VolunteerDashboard";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -34,6 +35,11 @@ const App = () => (
             <Route path="/organizer" element={
               <ProtectedRoute>
                 <Organizer />
+              </ProtectedRoute>
+            } />
+            <Route path="/volunteer" element={
+              <ProtectedRoute>
+                <VolunteerDashboard />
               </ProtectedRoute>
             } />
             <Route path="/auth" element={<Auth />} />

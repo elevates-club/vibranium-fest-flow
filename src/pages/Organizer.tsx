@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import VolunteerManagement from '@/components/organizer/VolunteerManagement';
+import EventCreation from '@/components/organizer/EventCreation';
 import { 
   Users, 
   Calendar,
@@ -183,26 +185,7 @@ const Organizer = () => {
             </TabsContent>
 
             <TabsContent value="events">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Event Management</CardTitle>
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Event
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex space-x-4">
-                      <Input placeholder="Search events..." className="flex-1" />
-                      <Button variant="outline">Filter</Button>
-                    </div>
-                    <div className="text-center py-12 text-muted-foreground">
-                      Event management interface will be available here
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <EventCreation />
             </TabsContent>
 
             <TabsContent value="qr-management">
@@ -265,20 +248,7 @@ const Organizer = () => {
             </TabsContent>
 
             <TabsContent value="volunteers">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Volunteer Management</CardTitle>
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Volunteer
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12 text-muted-foreground">
-                    Volunteer management interface coming soon
-                  </div>
-                </CardContent>
-              </Card>
+              <VolunteerManagement />
             </TabsContent>
 
             <TabsContent value="analytics">

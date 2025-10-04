@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      check_in_logs: {
+        Row: {
+          check_in_time: string
+          created_at: string
+          event_id: string
+          id: string
+          notes: string | null
+          qr_code: string
+          user_id: string
+          volunteer_id: string
+          zone: string | null
+        }
+        Insert: {
+          check_in_time?: string
+          created_at?: string
+          event_id: string
+          id?: string
+          notes?: string | null
+          qr_code: string
+          user_id: string
+          volunteer_id: string
+          zone?: string | null
+        }
+        Update: {
+          check_in_time?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          notes?: string | null
+          qr_code?: string
+          user_id?: string
+          volunteer_id?: string
+          zone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_in_logs_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_registrations: {
         Row: {
           check_in_time: string | null
@@ -254,6 +298,62 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      volunteer_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string
+          completed_at: string | null
+          created_at: string
+          event_id: string
+          id: string
+          notes: string | null
+          started_at: string | null
+          status: string
+          task: string
+          updated_at: string
+          volunteer_id: string
+          zone: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by: string
+          completed_at?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          notes?: string | null
+          started_at?: string | null
+          status?: string
+          task: string
+          updated_at?: string
+          volunteer_id: string
+          zone?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string
+          completed_at?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          notes?: string | null
+          started_at?: string | null
+          status?: string
+          task?: string
+          updated_at?: string
+          volunteer_id?: string
+          zone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "volunteer_assignments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
