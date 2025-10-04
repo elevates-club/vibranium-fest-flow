@@ -20,7 +20,6 @@ export type Database = {
           checked_in: boolean | null
           event_id: string
           id: string
-          qr_code: string | null
           registration_date: string
           status: string | null
           user_id: string
@@ -30,7 +29,6 @@ export type Database = {
           checked_in?: boolean | null
           event_id: string
           id?: string
-          qr_code?: string | null
           registration_date?: string
           status?: string | null
           user_id: string
@@ -40,7 +38,6 @@ export type Database = {
           checked_in?: boolean | null
           event_id?: string
           id?: string
-          qr_code?: string | null
           registration_date?: string
           status?: string | null
           user_id?: string
@@ -127,6 +124,7 @@ export type Database = {
           last_name: string | null
           phone: string | null
           points: number | null
+          qr_code: string | null
           updated_at: string
           user_id: string
           year: number | null
@@ -142,6 +140,7 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           points?: number | null
+          qr_code?: string | null
           updated_at?: string
           user_id: string
           year?: number | null
@@ -157,6 +156,7 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           points?: number | null
+          qr_code?: string | null
           updated_at?: string
           user_id?: string
           year?: number | null

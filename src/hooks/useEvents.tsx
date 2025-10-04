@@ -28,7 +28,6 @@ export interface EventRegistration {
   status?: string;
   checked_in?: boolean;
   check_in_time?: string;
-  qr_code?: string;
 }
 
 export const useEvents = () => {
