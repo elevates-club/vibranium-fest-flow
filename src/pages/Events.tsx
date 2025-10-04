@@ -28,6 +28,7 @@ const Events = () => {
   const [isRegistrationDialogOpen, setIsRegistrationDialogOpen] = useState(false);
   const [isLoginPromptOpen, setIsLoginPromptOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
   const [registrationForm, setRegistrationForm] = useState({
     name: '',
     email: '',
@@ -75,17 +76,15 @@ const Events = () => {
         eventsData?.map(async (event) => {
           console.log(`Fetching registration count for event: ${event.title} (ID: ${event.id})`);
           
-          // Try a different approach - get all registrations and count them
-          const { data: registrations, error: countError } = await supabase
-            .from('event_registrations')
-            .select('id')
-            .eq('event_id', event.id);
+          // Use the security definer function to get registration count
+          const { data: countData, error: countError } = await supabase
+            .rpc('get_event_registration_count', { event_id_param: event.id });
           
           if (countError) {
             console.error(`Count error for event ${event.id}:`, countError);
           }
           
-          const count = registrations?.length || 0;
+          const count = countData || 0;
           console.log(`Registration count for ${event.title}: ${count}`);
           
           return {
@@ -153,6 +152,7 @@ const Events = () => {
   const handleRegistrationSubmit = async () => {
     if (!user || !selectedEvent) return;
 
+    setIsRegistering(true);
     try {
       console.log('Submitting registration for event:', selectedEvent.title, 'User:', user.id);
       
@@ -183,8 +183,8 @@ const Events = () => {
       
       // Refresh data
       console.log('Refreshing events data...');
-      fetchEvents();
-      fetchUserRegistrations();
+      await fetchEvents();
+      await fetchUserRegistrations();
       
       // Close dialog
       setIsRegistrationDialogOpen(false);
@@ -196,6 +196,8 @@ const Events = () => {
         description: error.message || "Failed to register for event. Please try again.",
         variant: "destructive"
       });
+    } finally {
+      setIsRegistering(false);
     }
   };
 
@@ -523,10 +525,20 @@ const Events = () => {
                 </Button>
                 <Button 
                   onClick={handleRegistrationSubmit}
+                  disabled={isRegistering}
                   className="w-full sm:flex-1 bg-primary hover:bg-primary/90"
                 >
-                  <Mail className="w-4 h-4 mr-2" />
-                  Confirm Registration
+                  {isRegistering ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                      Registering...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4 mr-2" />
+                      Confirm Registration
+                    </>
+                  )}
                 </Button>
               </div>
             </div>

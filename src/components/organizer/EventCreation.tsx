@@ -45,13 +45,11 @@ export default function EventCreation() {
       const registrationCounts: {[key: string]: number} = {};
       
       for (const event of events) {
-        // Get all registrations and count them
-        const { data: registrations } = await supabase
-          .from('event_registrations')
-          .select('id')
-          .eq('event_id', event.id);
+        // Use the security definer function to get registration count
+        const { data: countData } = await supabase
+          .rpc('get_event_registration_count', { event_id_param: event.id });
         
-        registrationCounts[event.id] = registrations?.length || 0;
+        registrationCounts[event.id] = countData || 0;
       }
       
       setEventRegistrations(registrationCounts);

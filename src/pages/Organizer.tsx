@@ -58,11 +58,11 @@ const Organizer = () => {
       const eventsWithStats = await Promise.all(
         events.map(async (event) => {
           try {
-            const { data: registrations } = await supabase
-              .from('event_registrations')
-              .select('*')
-              .eq('event_id', event.id);
+            // Use the security definer function for registration count
+            const { data: registrationCount } = await supabase
+              .rpc('get_event_registration_count', { event_id_param: event.id });
 
+            // For check-ins, we still need to query directly since we need the checked_in field
             const { data: checkins } = await supabase
               .from('event_registrations')
               .select('*')
@@ -72,7 +72,7 @@ const Organizer = () => {
             return {
               id: event.id,
               title: event.title || 'Untitled Event',
-              registrations: registrations?.length || 0,
+              registrations: registrationCount || 0,
               checkins: checkins?.length || 0,
               status: event.end_date 
                 ? (new Date(event.end_date) < new Date() ? 'completed' : 
