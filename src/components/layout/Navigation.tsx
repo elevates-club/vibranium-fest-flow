@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Menu, 
   X, 
@@ -17,7 +18,9 @@ import {
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, signOut, userRoles } = useAuth();
+  const { toast } = useToast();
 
   // Base navigation items for all users
   const baseNavigation = [
@@ -47,6 +50,24 @@ const Navigation = () => {
   const navigation = [...baseNavigation, ...getRoleBasedNavigation()];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logged out successfully",
+        description: "You have been logged out of your account.",
+      });
+      navigate('/');
+    } catch (error) {
+      toast({
+        title: "Logout completed",
+        description: "You have been logged out locally.",
+        variant: "default",
+      });
+      navigate('/');
+    }
+  };
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-border">
@@ -90,7 +111,7 @@ const Navigation = () => {
                 <span className="text-sm text-muted-foreground">
                   Welcome back!
                 </span>
-                <Button variant="ghost" size="sm" onClick={signOut}>
+                <Button variant="ghost" size="sm" onClick={handleLogout}>
                   <LogOut className="w-4 h-4 mr-2" />
                   Logout
                 </Button>
@@ -152,7 +173,7 @@ const Navigation = () => {
                   variant="ghost" 
                   className="w-full justify-start"
                   onClick={() => {
-                    signOut();
+                    handleLogout();
                     setIsOpen(false);
                   }}
                 >

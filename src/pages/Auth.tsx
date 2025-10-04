@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { UserPlus, LogIn, Mail, Lock, User, GraduationCap, MapPin, Calendar } from 'lucide-react';
+import { UserPlus, LogIn, Mail, Lock, User, GraduationCap, MapPin, Calendar, Phone } from 'lucide-react';
 import { z } from 'zod';
 
 const signUpSchema = z.object({
@@ -14,6 +14,7 @@ const signUpSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
   firstName: z.string().trim().min(1, { message: "First name is required" }),
   lastName: z.string().trim().min(1, { message: "Last name is required" }),
+  phone: z.string().trim().min(10, { message: "Phone number must be at least 10 digits" }),
   department: z.string().trim().min(1, { message: "Department is required" }),
   year: z.number().min(1).max(5, { message: "Year must be between 1-5" }),
   college: z.string().trim().min(1, { message: "College name is required" }),
@@ -35,6 +36,7 @@ const Auth = () => {
     password: '',
     firstName: '',
     lastName: '',
+    phone: '',
     department: '',
     year: 1,
     college: '',
@@ -70,6 +72,7 @@ const Auth = () => {
             data: {
               first_name: validatedData.firstName,
               last_name: validatedData.lastName,
+              phone: validatedData.phone,
               department: validatedData.department,
               year: validatedData.year,
               college: validatedData.college,
@@ -304,6 +307,23 @@ const Auth = () => {
                         value={formData.lastName}
                         onChange={handleInputChange}
                         placeholder="Doe"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        className="pl-10"
+                        placeholder="+91 9876543210"
                         required
                       />
                     </div>

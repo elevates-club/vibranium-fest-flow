@@ -5,11 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import VolunteerManagement from '@/components/organizer/VolunteerManagement';
 import EventCreation from '@/components/organizer/EventCreation';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import { useEvents } from '@/hooks/useEvents';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Users, 
   Calendar,
@@ -23,14 +26,24 @@ import {
   Download,
   Eye,
   Edit,
-  Plus
+  Plus,
+  Mail,
+  Phone,
+  GraduationCap,
+  Clock,
+  CheckCircle
 } from 'lucide-react';
 
 const Organizer = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [recentEvents, setRecentEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRegisteredMembersDialogOpen, setIsRegisteredMembersDialogOpen] = useState(false);
+  const [selectedEventForMembers, setSelectedEventForMembers] = useState<any>(null);
+  const [registeredMembers, setRegisteredMembers] = useState<any[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
   const { events } = useEvents();
+  const { toast } = useToast();
 
   const fetchRecentEvents = useCallback(async () => {
     try {
@@ -71,6 +84,76 @@ const Organizer = () => {
   useEffect(() => {
     fetchRecentEvents();
   }, [fetchRecentEvents]);
+
+  const fetchRegisteredMembers = async (eventId: string) => {
+    setMembersLoading(true);
+    try {
+      // First, get the registrations
+      const { data: registrations, error: registrationsError } = await supabase
+        .from('event_registrations')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('registration_date', { ascending: false });
+
+      if (registrationsError) {
+        console.error('Error fetching registrations:', registrationsError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch registrations.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!registrations || registrations.length === 0) {
+        setRegisteredMembers([]);
+        return;
+      }
+
+      // Then, get the user profiles for all registered users
+      const userIds = registrations.map(reg => reg.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, email, phone, department, year, college')
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch user profiles.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Combine registrations with profile data
+      const membersWithProfiles = registrations.map(registration => {
+        const profile = profiles?.find(p => p.user_id === registration.user_id);
+        return {
+          ...registration,
+          profiles: profile || null
+        };
+      });
+
+      setRegisteredMembers(membersWithProfiles);
+    } catch (error) {
+      console.error('Error fetching registered members:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch registered members.",
+        variant: "destructive"
+      });
+    } finally {
+      setMembersLoading(false);
+    }
+  };
+
+  const handleViewRegisteredMembers = (event: any) => {
+    setSelectedEventForMembers(event);
+    setIsRegisteredMembersDialogOpen(true);
+    fetchRegisteredMembers(event.id);
+  };
 
   const departments = [
     { name: "Computer Science", events: 8, participants: 234, coordinator: "Dr. Smith" },
@@ -162,7 +245,12 @@ const Organizer = () => {
                             <Badge variant={event.status === 'ongoing' ? 'default' : event.status === 'upcoming' ? 'secondary' : 'outline'}>
                               {event.status}
                             </Badge>
-                            <Button variant="outline" size="sm">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleViewRegisteredMembers(event)}
+                              title="View Registered Members"
+                            >
                               <Eye className="w-4 h-4" />
                             </Button>
                           </div>
@@ -288,6 +376,109 @@ const Organizer = () => {
           </Tabs>
         </div>
       </div>
+
+      {/* Registered Members Dialog */}
+      <Dialog open={isRegisteredMembersDialogOpen} onOpenChange={setIsRegisteredMembersDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Registered Members - {selectedEventForMembers?.title}
+            </DialogTitle>
+            <DialogDescription>
+              View all registered participants for this event
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="overflow-y-auto max-h-[60vh]">
+            {membersLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <span className="ml-2 text-muted-foreground">Loading members...</span>
+              </div>
+            ) : registeredMembers.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No registered members found for this event.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Total registered: {registeredMembers.length} members
+                  </p>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle className="w-4 h-4" />
+                    <span>
+                      {registeredMembers.filter(member => member.checked_in).length} checked in
+                    </span>
+                  </div>
+                </div>
+                
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Year</TableHead>
+                      <TableHead>College</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Registered</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {registeredMembers.map((member) => (
+                      <TableRow key={member.id}>
+                        <TableCell className="font-medium">
+                          {member.profiles?.first_name && member.profiles?.last_name 
+                            ? `${member.profiles.first_name} ${member.profiles.last_name}`.trim()
+                            : member.profiles?.first_name || member.profiles?.last_name || 'Profile Incomplete'
+                          }
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-muted-foreground" />
+                            {member.profiles?.email || 'N/A'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-muted-foreground" />
+                            {member.profiles?.phone || 'Not provided'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <GraduationCap className="w-4 h-4 text-muted-foreground" />
+                            {member.profiles?.department || 'Not provided'}
+                          </div>
+                        </TableCell>
+                        <TableCell>{member.profiles?.year || 'Not provided'}</TableCell>
+                        <TableCell>{member.profiles?.college || 'Not provided'}</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={member.checked_in ? 'default' : member.status === 'registered' ? 'secondary' : 'outline'}
+                          >
+                            {member.checked_in ? 'Checked In' : member.status || 'Registered'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Clock className="w-4 h-4" />
+                            {new Date(member.registration_date).toLocaleDateString()}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

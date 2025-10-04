@@ -244,10 +244,10 @@ const Events = () => {
       ...event,
       date: startDate.toLocaleDateString(),
       time: `${startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-      attendees: 0, // This would come from a count of registrations
+      attendees: event.attendees || 0, // Use the actual registration count from database
       maxAttendees: event.max_attendees,
       isRegistered,
-      onRegister: () => handleRegister(event.id)
+      onRegister: () => handleRegisterClick(event)
     };
   });
 

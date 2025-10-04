@@ -91,7 +91,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      // First, try to get the current session to check if it's valid
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.warn('Session error during logout:', sessionError);
+        // If there's a session error, clear local state anyway
+        clearAuthState();
+        return;
+      }
+
+      if (!session) {
+        // No active session, just clear local state
+        clearAuthState();
+        return;
+      }
+
+      // Try to sign out with the current session
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.warn('Logout error:', error);
+        // Even if logout fails on server, clear local state
+        clearAuthState();
+      } else {
+        // Successful logout, clear local state
+        clearAuthState();
+      }
+    } catch (error) {
+      console.error('Unexpected error during logout:', error);
+      // Clear local state regardless of server response
+      clearAuthState();
+    }
+  };
+
+  const clearAuthState = () => {
+    setUser(null);
+    setSession(null);
+    setUserRoles([]);
+    // Clear any stored auth data from localStorage
+    localStorage.removeItem('sb-rqzklkmajrgfchsyvjgb-auth-token');
   };
 
   const value = {
