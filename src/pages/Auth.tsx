@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { UserPlus, LogIn, Mail, Lock, User, GraduationCap, MapPin, Calendar, Phone } from 'lucide-react';
+import { UserPlus, LogIn, Mail, Lock, User, GraduationCap, MapPin, Calendar, Phone, ArrowLeft, KeyRound } from 'lucide-react';
+import PasswordResetModal from '@/components/ui/PasswordResetModal';
 import { z } from 'zod';
 
 const signUpSchema = z.object({
@@ -25,11 +26,18 @@ const signInSchema = z.object({
   password: z.string().min(1, { message: "Password is required" }),
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().trim().email({ message: "Invalid email address" }),
+});
+
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isPasswordResetModalOpen, setIsPasswordResetModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -51,7 +59,57 @@ const Auth = () => {
       }
     };
     checkUser();
-  }, [navigate]);
+
+    // Check if we're in password reset mode
+    const mode = searchParams.get('mode');
+    if (mode === 'reset-password') {
+      setIsForgotPassword(true);
+      toast({
+        title: "Password Reset Link Sent",
+        description: "Please check your email for the password reset link.",
+      });
+    }
+  }, [navigate, searchParams, toast]);
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const validatedData = forgotPasswordSchema.parse({ email: formData.email });
+
+      const { error } = await supabase.auth.resetPasswordForEmail(validatedData.email, {
+        redirectTo: `${window.location.origin}/auth?mode=reset-password`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Password Reset Email Sent!",
+        description: "Please check your email for instructions to reset your password.",
+      });
+
+      setIsForgotPassword(false);
+      setFormData(prev => ({ ...prev, email: '', password: '' }));
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        const firstError = error.errors[0];
+        toast({
+          title: "Validation Error",
+          description: firstError.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to send password reset email",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -269,18 +327,20 @@ const Auth = () => {
         <Card className="bg-gradient-card border-border">
           <CardHeader className="text-center pb-4 sm:pb-6">
             <CardTitle className="text-xl sm:text-2xl font-bold bg-gradient-hero bg-clip-text text-transparent">
-              {isSignUp ? 'Join Vibranium' : 'Welcome Back'}
+              {isSignUp ? 'Join Vibranium' : isForgotPassword ? 'Reset Password' : 'Welcome Back'}
             </CardTitle>
             <CardDescription className="text-sm sm:text-base">
               {isSignUp 
                 ? 'Create your account to start your techfest journey'
+                : isForgotPassword 
+                ? 'Enter your email address and we\'ll send you a link to reset your password'
                 : 'Sign in to access your dashboard and events'
               }
             </CardDescription>
           </CardHeader>
           
           <CardContent className="px-4 sm:px-6">
-            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+            <form onSubmit={isForgotPassword ? handleForgotPassword : handleSubmit} className="space-y-3 sm:space-y-4">
               {isSignUp && (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -400,22 +460,24 @@ const Auth = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="pl-10 h-11"
-                    placeholder="••••••••"
-                    required
-                  />
+              {!isForgotPassword && (
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      className="pl-10 h-11"
+                      placeholder="••••••••"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <Button
                 type="submit"
@@ -430,6 +492,11 @@ const Auth = () => {
                     <UserPlus className="w-5 h-5 mr-2" />
                     Create Account
                   </>
+                ) : isForgotPassword ? (
+                  <>
+                    <KeyRound className="w-5 h-5 mr-2" />
+                    Send Reset Link
+                  </>
                 ) : (
                   <>
                     <LogIn className="w-5 h-5 mr-2" />
@@ -440,16 +507,45 @@ const Auth = () => {
             </form>
 
             <div className="mt-4 sm:mt-6 text-center space-y-3">
-              <p className="text-sm text-muted-foreground">
-                {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-              </p>
-              <Button
-                variant="link"
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="text-primary hover:text-primary-glow text-base font-medium"
-              >
-                {isSignUp ? 'Sign In' : 'Create Account'}
-              </Button>
+              {!isForgotPassword && (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+                  </p>
+                  <Button
+                    variant="link"
+                    onClick={() => setIsSignUp(!isSignUp)}
+                    className="text-primary hover:text-primary-glow text-base font-medium"
+                  >
+                    {isSignUp ? 'Sign In' : 'Create Account'}
+                  </Button>
+                </>
+              )}
+              
+              {!isSignUp && !isForgotPassword && (
+                <div className="pt-2">
+                  <Button
+                    variant="link"
+                    onClick={() => setIsPasswordResetModalOpen(true)}
+                    className="text-sm text-muted-foreground hover:text-primary"
+                  >
+                    Forgot your password?
+                  </Button>
+                </div>
+              )}
+
+              {isForgotPassword && (
+                <div className="pt-2">
+                  <Button
+                    variant="link"
+                    onClick={() => setIsForgotPassword(false)}
+                    className="text-sm text-muted-foreground hover:text-primary flex items-center"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-1" />
+                    Back to Sign In
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="mt-4 text-center">
@@ -461,6 +557,12 @@ const Auth = () => {
             </div>
           </CardContent>
         </Card>
+        
+        <PasswordResetModal 
+          isOpen={isPasswordResetModalOpen}
+          onClose={() => setIsPasswordResetModalOpen(false)}
+          email={formData.email}
+        />
       </div>
     </div>
   );

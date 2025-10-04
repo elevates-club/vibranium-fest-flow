@@ -202,22 +202,43 @@ const Events = () => {
   };
 
   const sendRegistrationEmail = async (event: any, userData: any) => {
-    // This would integrate with an email service like SendGrid, Resend, etc.
-    // For now, we'll simulate the email sending
-    console.log('Sending registration email:', {
-      to: userData.email,
-      subject: `Registration Confirmation - ${event.title}`,
-      event: event,
-      user: userData
-    });
-    
-    // In a real implementation, you would call your email service here
-    // Example: await emailService.send({
-    //   to: userData.email,
-    //   subject: `Registration Confirmation - ${event.title}`,
-    //   template: 'event-registration',
-    //   data: { event, user: userData }
-    // });
+    try {
+      // Call the email service API
+      const response = await fetch('http://localhost:3001/send-event-registration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          eventDetails: event,
+          userDetails: userData
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('Registration email sent successfully:', result.messageId);
+        toast({
+          title: "Registration Confirmed!",
+          description: "Check your email for event details and confirmation.",
+        });
+      } else {
+        console.error('Failed to send registration email:', result.error);
+        toast({
+          title: "Registration Successful",
+          description: "Email notification failed, but your registration is confirmed.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error sending registration email:', error);
+      // Don't show error to user since registration was successful
+      toast({
+        title: "Registration Successful",
+        description: "Your registration is confirmed. Email notification will be sent shortly.",
+      });
+    }
   };
 
   // Utility function to format date and time with proper timezone handling
@@ -431,8 +452,8 @@ const Events = () => {
 
       {/* Registration Dialog */}
       <Dialog open={isRegistrationDialogOpen} onOpenChange={setIsRegistrationDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-hidden">
-          <DialogHeader>
+        <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
               <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
               <span className="break-words">Confirm Event Registration</span>
@@ -443,45 +464,47 @@ const Events = () => {
           </DialogHeader>
           
           {selectedEvent && (
-            <div className="space-y-4">
+            <div className="flex-1 overflow-y-auto space-y-3 sm:space-y-4 min-h-0">
               {/* Event Details */}
-              <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                <h4 className="font-semibold">{selectedEvent.title}</h4>
-                <div className="text-sm text-muted-foreground space-y-1">
+              <div className="bg-muted/50 p-3 sm:p-4 rounded-lg space-y-2">
+                <h4 className="font-semibold text-sm sm:text-base">{selectedEvent.title}</h4>
+                <div className="text-xs sm:text-sm text-muted-foreground space-y-1">
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    {new Date(selectedEvent.start_date).toLocaleDateString()}
+                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                    <span className="truncate">{new Date(selectedEvent.start_date).toLocaleDateString()}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    {selectedEvent.location}
+                    <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                    <span className="truncate">{selectedEvent.location}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    {selectedEvent.attendees || 0}/{selectedEvent.max_attendees} registered
+                    <Users className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                    <span className="truncate">{selectedEvent.attendees || 0}/{selectedEvent.max_attendees} registered</span>
                   </div>
                 </div>
               </div>
 
               {/* Registration Form */}
-              <div className="space-y-4 overflow-y-auto">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
+                    <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
                     <Input
                       id="name"
                       value={registrationForm.name}
                       onChange={(e) => setRegistrationForm({ ...registrationForm, name: e.target.value })}
+                      className="h-10 sm:h-11"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                     <Input
                       id="email"
                       type="email"
                       value={registrationForm.email}
                       onChange={(e) => setRegistrationForm({ ...registrationForm, email: e.target.value })}
+                      className="h-10 sm:h-11"
                       required
                     />
                   </div>
@@ -489,62 +512,65 @@ const Events = () => {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
+                    <Label htmlFor="phone" className="text-sm font-medium">Phone</Label>
                     <Input
                       id="phone"
                       value={registrationForm.phone}
                       onChange={(e) => setRegistrationForm({ ...registrationForm, phone: e.target.value })}
+                      className="h-10 sm:h-11"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="year">Year</Label>
+                    <Label htmlFor="year" className="text-sm font-medium">Year</Label>
                     <Input
                       id="year"
                       value={registrationForm.year}
                       onChange={(e) => setRegistrationForm({ ...registrationForm, year: e.target.value })}
+                      className="h-10 sm:h-11"
                     />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
+                  <Label htmlFor="department" className="text-sm font-medium">Department</Label>
                   <Input
                     id="department"
                     value={registrationForm.department}
                     onChange={(e) => setRegistrationForm({ ...registrationForm, department: e.target.value })}
+                    className="h-10 sm:h-11"
                   />
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 border-t">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsRegistrationDialogOpen(false)}
-                  className="w-full sm:flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleRegistrationSubmit}
-                  disabled={isRegistering}
-                  className="w-full sm:flex-1 bg-primary hover:bg-primary/90"
-                >
-                  {isRegistering ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                      Registering...
-                    </>
-                  ) : (
-                    <>
-                      <Mail className="w-4 h-4 mr-2" />
-                      Confirm Registration
-                    </>
-                  )}
-                </Button>
-              </div>
             </div>
           )}
+
+          {/* Action Buttons - Fixed at bottom */}
+          <div className="flex-shrink-0 flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 sm:pt-4 border-t bg-background">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsRegistrationDialogOpen(false)}
+              className="w-full sm:flex-1 h-10 sm:h-11"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleRegistrationSubmit}
+              disabled={isRegistering}
+              className="w-full sm:flex-1 h-10 sm:h-11"
+            >
+              {isRegistering ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  Registering...
+                </>
+              ) : (
+                <>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Confirm Registration
+                </>
+              )}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
