@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/layout/Navigation';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useEvents } from '@/hooks/useEvents';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
+import DigitalPass from '@/components/ui/DigitalPass';
 import { 
   User,
   Calendar,
@@ -13,13 +15,15 @@ import {
   MapPin,
   Users,
   BarChart3,
-  ClipboardList
+  ClipboardList,
+  Ticket
 } from 'lucide-react';
 
 const Dashboard = () => {
   const { user, userRoles } = useAuth();
   const { events, registrations, getUserEvents } = useEvents();
   const [profile, setProfile] = useState<any>(null);
+  const [showDigitalPass, setShowDigitalPass] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -217,7 +221,6 @@ const Dashboard = () => {
             <div className="bg-gradient-card p-4 sm:p-6 rounded-xl border border-border">
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-secondary" />
-                <span className="text-sm text-muted-foreground">Active</span>
               </div>
               <div className="text-xl sm:text-2xl font-bold text-foreground">{userData.eventsAttended}</div>
               <div className="text-xs sm:text-sm text-muted-foreground">Events Attended</div>
@@ -226,7 +229,6 @@ const Dashboard = () => {
             <div className="bg-gradient-card p-4 sm:p-6 rounded-xl border border-border">
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <User className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
-                <span className="text-sm text-muted-foreground">Profile</span>
               </div>
               <div className="text-lg sm:text-xl font-bold text-foreground truncate">{userData.department}</div>
               <div className="text-xs sm:text-sm text-muted-foreground">Department</div>
@@ -234,6 +236,59 @@ const Dashboard = () => {
           </div>
 
           <div className="grid lg:grid-cols-1 gap-8">
+            
+            {/* Digital Pass */}
+            {myEvents.length > 0 && (
+              <div>
+                <div className="bg-gradient-card p-6 rounded-xl border border-border">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold flex items-center">
+                      <Ticket className="w-5 h-5 mr-2 text-primary" />
+                      My Digital Pass
+                    </h2>
+                    <Badge variant="secondary" className="text-xs">
+                      Entry Pass
+                    </Badge>
+                  </div>
+                  
+                  {!showDigitalPass ? (
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground mb-4">
+                        You have registered for {myEvents.length} event{myEvents.length > 1 ? 's' : ''}. 
+                        Generate your digital pass for event entry.
+                      </p>
+                      <Button 
+                        onClick={() => setShowDigitalPass(true)}
+                        className="w-full"
+                        variant="hero"
+                      >
+                        <QrCode className="w-4 h-4 mr-2" />
+                        Generate My Digital Pass
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Your unique QR code for event entry. Show this to volunteers for check-in.
+                      </p>
+                      <DigitalPass 
+                        eventTitle="Vibranium 5.0"
+                        eventDate="October 9 2025"
+                        eventLocation="EKC College"
+                        className="mx-auto"
+                      />
+                      <Button 
+                        onClick={() => setShowDigitalPass(false)}
+                        variant="outline"
+                        className="w-full mt-4"
+                      >
+                        Hide Digital Pass
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             
             {/* My Events */}
             <div>
@@ -270,11 +325,6 @@ const Dashboard = () => {
                     </div>
                   ))}
                 </div>
-                
-                <Button variant="hero" className="w-full mt-4">
-                  <QrCode className="w-4 h-4 mr-2" />
-                  View My QR Pass
-                </Button>
               </div>
             </div>
           </div>

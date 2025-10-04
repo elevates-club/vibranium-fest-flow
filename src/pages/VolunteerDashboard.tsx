@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ClipboardList, QrCode, CheckCircle, Clock, MapPin } from 'lucide-react';
 import Navigation from '@/components/layout/Navigation';
 import { format } from 'date-fns';
-import QRScanner from '@/components/volunteer/QRScanner';
+import QRScanner from '@/components/ui/QRScanner';
 
 interface Assignment {
   id: string;

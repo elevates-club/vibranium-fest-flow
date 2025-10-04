@@ -13,7 +13,10 @@
     "vercel-dev": "vite dev",
     "email-server": "node server.js",
     "dev:full": "concurrently \"npm run dev\" \"npm run email-server\"",
-    "test:email": "node test-email.js"
+    "test:email": "node test-email.js",
+    "generate-qr-codes": "node generate-qr-codes.js",
+    "check-qr-status": "node check-qr-status.js",
+    "generate-qr-service": "node generate-qr-codes-service.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -49,6 +52,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/nodemailer": "^7.0.2",
+    "@zxing/library": "^0.21.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -61,10 +65,13 @@
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "nodemailer": "^7.0.6",
+    "qr-scanner": "^1.4.2",
+    "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.61.1",
+    "react-qr-code": "^2.0.18",
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^6.30.1",
     "recharts": "^2.15.4",
