@@ -5,10 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/ui/ProtectedRoute";
-import Home from "./pages/Home";
 import Events from "./pages/Events";
 import Dashboard from "./pages/Dashboard";
-import Leaderboard from "./pages/Leaderboard";
 import Organizer from "./pages/Organizer";
 import VolunteerDashboard from "./pages/VolunteerDashboard";
 import Auth from "./pages/Auth";
@@ -24,14 +22,13 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<Events />} />
             <Route path="/events" element={<Events />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
               </ProtectedRoute>
             } />
-            <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/organizer" element={
               <ProtectedRoute requiredRoles={['organizer', 'admin']}>
                 <Organizer />

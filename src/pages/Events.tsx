@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/layout/Navigation';
 import EventCard from '@/components/ui/EventCard';
+import LoginPromptModal from '@/components/ui/LoginPromptModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,7 @@ const Events = () => {
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRegistrationDialogOpen, setIsRegistrationDialogOpen] = useState(false);
+  const [isLoginPromptOpen, setIsLoginPromptOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [registrationForm, setRegistrationForm] = useState({
     name: '',
@@ -126,11 +128,8 @@ const Events = () => {
 
   const handleRegisterClick = (event: any) => {
     if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to register for events.",
-        variant: "destructive"
-      });
+      setSelectedEvent(event);
+      setIsLoginPromptOpen(true);
       return;
     }
 
@@ -318,24 +317,6 @@ const Events = () => {
             </div>
           </div>
 
-          {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-4 mb-8 p-6 bg-gradient-card rounded-xl border border-border">
-            <div className="text-center">
-              <Calendar className="w-6 h-6 text-primary mx-auto mb-2" />
-              <div className="text-2xl font-bold text-foreground">3</div>
-              <div className="text-sm text-muted-foreground">Days</div>
-            </div>
-            <div className="text-center">
-              <MapPin className="w-6 h-6 text-secondary mx-auto mb-2" />
-              <div className="text-2xl font-bold text-foreground">8</div>
-              <div className="text-sm text-muted-foreground">Venues</div>
-            </div>
-            <div className="text-center">
-              <Users className="w-6 h-6 text-accent mx-auto mb-2" />
-              <div className="text-2xl font-bold text-foreground">500+</div>
-              <div className="text-sm text-muted-foreground">Participants</div>
-            </div>
-          </div>
 
           {/* Events Grid */}
           <div className="space-y-4">
@@ -508,6 +489,13 @@ const Events = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Login Prompt Modal */}
+      <LoginPromptModal 
+        isOpen={isLoginPromptOpen}
+        onClose={() => setIsLoginPromptOpen(false)}
+        eventTitle={selectedEvent?.title}
+      />
     </div>
   );
 };

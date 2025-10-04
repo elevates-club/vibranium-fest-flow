@@ -452,9 +452,9 @@ const Auth = () => {
             </div>
 
             <div className="mt-4 text-center">
-              <Link to="/">
+              <Link to="/events">
                 <Button variant="ghost" size="sm">
-                  ← Back to Home
+                  ← Back to Events
                 </Button>
               </Link>
             </div>

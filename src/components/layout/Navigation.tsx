@@ -8,7 +8,6 @@ import {
   X, 
   Calendar, 
   Users, 
-  Trophy, 
   User,
   LogIn,
   UserPlus,
@@ -26,7 +25,6 @@ const Navigation = () => {
   const baseNavigation = [
     { name: 'Events', href: '/events', icon: Calendar },
     { name: 'Dashboard', href: '/dashboard', icon: User },
-    { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
   ];
 
   // Role-based navigation items
@@ -58,14 +56,14 @@ const Navigation = () => {
         title: "Logged out successfully",
         description: "You have been logged out of your account.",
       });
-      navigate('/');
+      navigate('/events');
     } catch (error) {
       toast({
         title: "Logout completed",
         description: "You have been logged out locally.",
         variant: "default",
       });
-      navigate('/');
+      navigate('/events');
     }
   };
 
@@ -74,7 +72,7 @@ const Navigation = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
+          <Link to="/events" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-lg">V</span>
             </div>
