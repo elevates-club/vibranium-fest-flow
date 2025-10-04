@@ -425,14 +425,14 @@ const Events = () => {
 
       {/* Registration Dialog */}
       <Dialog open={isRegistrationDialogOpen} onOpenChange={setIsRegistrationDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-primary" />
-              Confirm Event Registration
+            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
+              <span className="break-words">Confirm Event Registration</span>
             </DialogTitle>
-            <DialogDescription>
-              Please review your details before confirming registration for <strong>{selectedEvent?.title}</strong>
+            <DialogDescription className="text-sm sm:text-base">
+              Please review your details before confirming registration for <strong className="break-words">{selectedEvent?.title}</strong>
             </DialogDescription>
           </DialogHeader>
           
@@ -458,8 +458,8 @@ const Events = () => {
               </div>
 
               {/* Registration Form */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4 overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Full Name</Label>
                     <Input
@@ -481,7 +481,7 @@ const Events = () => {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone</Label>
                     <Input
@@ -511,17 +511,17 @@ const Events = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 border-t">
                 <Button 
                   variant="outline" 
                   onClick={() => setIsRegistrationDialogOpen(false)}
-                  className="flex-1"
+                  className="w-full sm:flex-1"
                 >
                   Cancel
                 </Button>
                 <Button 
                   onClick={handleRegistrationSubmit}
-                  className="flex-1 bg-primary hover:bg-primary/90"
+                  className="w-full sm:flex-1 bg-primary hover:bg-primary/90"
                 >
                   <Mail className="w-4 h-4 mr-2" />
                   Confirm Registration

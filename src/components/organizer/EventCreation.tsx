@@ -20,6 +20,7 @@ export default function EventCreation() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [eventRegistrations, setEventRegistrations] = useState<{[key: string]: number}>({});
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -80,7 +81,7 @@ export default function EventCreation() {
           category: formData.category,
           location: formData.location,
           start_date: formData.start_date,
-          end_date: formData.end_date || null, // Allow null for optional end date
+          end_date: formData.end_date || formData.start_date, // Use start_date as fallback if end_date is empty
           max_attendees: formData.max_attendees,
           registration_fee: formData.registration_fee,
           points_reward: formData.points_reward || 0, // Default to 0 if not provided
@@ -119,7 +120,7 @@ export default function EventCreation() {
           category: formData.category,
           location: formData.location,
           start_date: formData.start_date,
-          end_date: formData.end_date || null, // Allow null for optional end date
+          end_date: formData.end_date || formData.start_date, // Use start_date as fallback if end_date is empty
           max_attendees: formData.max_attendees,
           registration_fee: formData.registration_fee,
           points_reward: formData.points_reward || 0, // Default to 0 if not provided
@@ -199,34 +200,65 @@ export default function EventCreation() {
       return;
     }
 
+    setDeletingEventId(eventId);
     try {
+      console.log('Starting delete process for event:', eventId);
+      
       // First delete all registrations for this event
-      await supabase
+      console.log('Deleting registrations for event:', eventId);
+      const { error: registrationsError } = await supabase
         .from('event_registrations')
         .delete()
         .eq('event_id', eventId);
 
+      if (registrationsError) {
+        console.error('Error deleting registrations:', registrationsError);
+        throw registrationsError;
+      }
+      console.log('Registrations deleted successfully');
+
       // Then delete the event
-      const { error } = await supabase
+      console.log('Deleting event:', eventId);
+      const { error: eventError } = await supabase
         .from('events')
         .delete()
         .eq('id', eventId);
 
-      if (error) throw error;
+      if (eventError) {
+        console.error('Error deleting event:', eventError);
+        throw eventError;
+      }
+      console.log('Event deleted successfully');
 
       toast({
         title: "Event Deleted",
         description: "The event has been successfully deleted.",
       });
 
-      refetchEvents();
-    } catch (error) {
+      // Add a small delay to ensure database operation is complete
+      console.log('Waiting for database operation to complete...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Refresh the events list from database
+      console.log('Refreshing events list from database...');
+      await refetchEvents();
+      console.log('Events list refreshed from database');
+      
+      // Double-check by fetching again after a short delay
+      setTimeout(async () => {
+        console.log('Double-checking events list...');
+        await refetchEvents();
+        console.log('Double-check complete');
+      }, 1000);
+    } catch (error: any) {
       console.error('Error deleting event:', error);
       toast({
         title: "Error",
-        description: "Failed to delete event. Please try again.",
+        description: `Failed to delete event: ${error.message || 'Unknown error'}`,
         variant: "destructive"
       });
+    } finally {
+      setDeletingEventId(null);
     }
   };
 
@@ -540,8 +572,13 @@ export default function EventCreation() {
                             size="sm"
                             onClick={() => handleDeleteEvent(event.id)}
                             className="h-8 px-2 text-red-600 hover:text-red-700"
+                            disabled={deletingEventId === event.id}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            {deletingEventId === event.id ? (
+                              <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
                           </Button>
                         </div>
                       </div>

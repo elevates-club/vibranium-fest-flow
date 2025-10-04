@@ -46,13 +46,16 @@ export const useEvents = () => {
 
   const fetchEvents = async () => {
     try {
+      console.log('Fetching events from database...');
       const { data, error } = await supabase
         .from('events')
         .select('*')
         .order('start_date', { ascending: true });
       
       if (error) throw error;
+      console.log('Events fetched from database:', data?.length || 0, 'events');
       setEvents(data || []);
+      console.log('Events state updated:', data?.length || 0, 'events');
     } catch (error) {
       console.error('Error fetching events:', error);
       toast({
@@ -141,6 +144,12 @@ export const useEvents = () => {
     );
   };
 
+  const refetchEvents = async () => {
+    console.log('refetchEvents called - forcing complete refresh...');
+    setLoading(true);
+    await fetchEvents();
+  };
+
   return {
     events,
     registrations,
@@ -148,7 +157,7 @@ export const useEvents = () => {
     registerForEvent,
     isRegisteredForEvent,
     getUserEvents,
-    refetchEvents: fetchEvents,
+    refetchEvents,
     refetchRegistrations: fetchUserRegistrations
   };
 };
