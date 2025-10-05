@@ -266,7 +266,7 @@ export default function VolunteerDashboard() {
           </TabsContent>
 
           <TabsContent value="checkin">
-            <QRScanner onCheckInSuccess={fetchAssignments} />
+            <QRScanner onScanSuccess={fetchAssignments} />
           </TabsContent>
         </Tabs>
       </div>

@@ -58,8 +58,7 @@ export const useQRCode = () => {
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
-          qr_code_data: qrCodeDataURL,
-          qr_code_generated_at: new Date().toISOString(),
+          qr_code: qrCodeDataURL,
         })
         .eq('user_id', user.id);
 
@@ -69,7 +68,7 @@ export const useQRCode = () => {
 
       setQrCodeData({
         qrCodeDataURL,
-        participantId: profile.participant_id || '',
+        participantId: user.id,
         generatedAt: new Date().toISOString(),
       });
 
@@ -90,7 +89,7 @@ export const useQRCode = () => {
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('qr_code_data, participant_id, qr_code_generated_at')
+        .select('qr_code, user_id')
         .eq('user_id', user.id)
         .single();
 
@@ -98,11 +97,11 @@ export const useQRCode = () => {
         throw new Error('Failed to fetch QR code data');
       }
 
-      if (profile.qr_code_data && profile.participant_id) {
+      if (profile.qr_code) {
         setQrCodeData({
-          qrCodeDataURL: profile.qr_code_data,
-          participantId: profile.participant_id,
-          generatedAt: profile.qr_code_generated_at || new Date().toISOString(),
+          qrCodeDataURL: profile.qr_code,
+          participantId: user.id,
+          generatedAt: new Date().toISOString(),
         });
       } else {
         // Generate new QR code if none exists

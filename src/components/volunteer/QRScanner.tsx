@@ -13,9 +13,10 @@ import { useEvents } from '@/hooks/useEvents';
 
 interface QRScannerProps {
   onCheckInSuccess?: () => void;
+  onScanSuccess?: (data: any) => void;
 }
 
-export default function QRScanner({ onCheckInSuccess }: QRScannerProps) {
+export default function QRScanner({ onCheckInSuccess, onScanSuccess }: QRScannerProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { events } = useEvents();
