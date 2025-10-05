@@ -8,6 +8,10 @@ import { QrCode, Camera, CheckCircle, XCircle, User, Mail, Calendar } from 'luci
 import QRCodeService from '@/services/qrCodeService';
 import { supabase } from '@/integrations/supabase/client';
 import { BrowserMultiFormatReader } from '@zxing/library';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface QRScannerProps {
   eventId?: string;
@@ -24,6 +28,12 @@ const QRScanner: React.FC<QRScannerProps> = ({
   const [scannedData, setScannedData] = useState<any>(null);
   const [scanResult, setScanResult] = useState<'success' | 'error' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [mode, setMode] = useState<'camera' | 'manual'>('camera');
+  const [events, setEvents] = useState<any[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string | undefined>(eventId);
+  const [manualCode, setManualCode] = useState('');
+  const [zone, setZone] = useState('');
+  const [notes, setNotes] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   const { toast } = useToast();
@@ -31,6 +41,7 @@ const QRScanner: React.FC<QRScannerProps> = ({
   useEffect(() => {
     // Initialize the QR code reader
     codeReaderRef.current = new BrowserMultiFormatReader();
+    fetchEvents();
     
     return () => {
       // Cleanup on unmount
@@ -40,9 +51,18 @@ const QRScanner: React.FC<QRScannerProps> = ({
     };
   }, []);
 
+  const fetchEvents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, title, start_date, end_date')
+        .order('start_date', { ascending: true });
+      if (!error) setEvents(data || []);
+    } catch {}
+  };
+
   const startScanning = async () => {
     try {
-      setIsScanning(true);
       setScannedData(null);
       setScanResult(null);
 
@@ -50,8 +70,22 @@ const QRScanner: React.FC<QRScannerProps> = ({
         throw new Error('QR code reader not initialized');
       }
 
-      // Start scanning
-      const result = await codeReaderRef.current.decodeFromVideoDevice(
+      // Request camera access explicitly first (rear camera preferred)
+      const constraints: MediaStreamConstraints = {
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      setIsScanning(true);
+
+      // Start scanning with ZXing
+      codeReaderRef.current.decodeFromVideoDevice(
         undefined,
         videoRef.current!,
         (result, error) => {
@@ -68,7 +102,7 @@ const QRScanner: React.FC<QRScannerProps> = ({
       console.error('Error accessing camera:', error);
       toast({
         title: "Camera Access Error",
-        description: "Please allow camera access to scan QR codes.",
+        description: "Please allow camera access and ensure HTTPS or localhost.",
         variant: "destructive",
       });
       setIsScanning(false);
@@ -80,6 +114,12 @@ const QRScanner: React.FC<QRScannerProps> = ({
     if (codeReaderRef.current) {
       codeReaderRef.current.reset();
     }
+    // Stop camera tracks
+    const media = videoRef.current?.srcObject as MediaStream | undefined;
+    media?.getTracks().forEach(t => t.stop());
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
   };
 
   const handleQRCodeDetected = async (qrDataString: string) => {
@@ -87,20 +127,38 @@ const QRScanner: React.FC<QRScannerProps> = ({
       setIsProcessing(true);
       stopScanning();
 
-      const qrData = QRCodeService.parseQRCodeData(qrDataString);
+      let qrData = QRCodeService.parseQRCodeData(qrDataString);
       
+      // Fallback: treat input as Participant ID (manual entry)
       if (!qrData) {
-        setScanResult('error');
-        toast({
-          title: "Invalid QR Code",
-          description: "The scanned QR code is not valid.",
-          variant: "destructive",
-        });
-        return;
+        const { data: profileByPid } = await (supabase as any)
+          .from('profiles')
+          .select('*')
+          .eq('participant_id', qrDataString)
+          .single();
+
+        if (!profileByPid) {
+          setScanResult('error');
+          toast({
+            title: "Failed to scan QR code",
+            description: "Invalid QR or Participant ID. Please check and try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        qrData = {
+          userId: profileByPid.user_id,
+          userEmail: profileByPid.email || '',
+          userName: `${profileByPid.first_name || ''} ${profileByPid.last_name || ''}`.trim() || 'Participant',
+          generatedAt: new Date().toISOString(),
+          type: 'user',
+          participantId: (profileByPid as any).participant_id
+        } as any;
       }
 
       // Verify user exists and get additional data
-      const { data: profile } = await supabase
+      const { data: profile } = await (supabase as any)
         .from('profiles')
         .select('*')
         .eq('user_id', qrData.userId)
@@ -117,12 +175,13 @@ const QRScanner: React.FC<QRScannerProps> = ({
       }
 
       // Check if user is registered for the event (if eventId provided)
-      if (eventId) {
+      const targetEventId = selectedEventId || eventId;
+      if (targetEventId) {
         const { data: registration } = await supabase
           .from('event_registrations')
           .select('*')
           .eq('user_id', qrData.userId)
-          .eq('event_id', eventId)
+          .eq('event_id', targetEventId)
           .single();
 
         if (!registration) {
@@ -165,14 +224,40 @@ const QRScanner: React.FC<QRScannerProps> = ({
     }
   };
 
-  const handleManualEntry = () => {
-    const participantId = prompt('Enter Participant ID:');
-    if (participantId) {
-      // Handle manual entry
-      toast({
-        title: "Manual Entry",
-        description: `Processing manual entry for ID: ${participantId}`,
-      });
+  const handleManualEntry = async () => {
+    if (!manualCode) return;
+    await handleQRCodeDetected(manualCode);
+  };
+
+  const handleCheckIn = async () => {
+    try {
+      if (!scannedData || !(selectedEventId || eventId)) return;
+      const targetEventId = selectedEventId || eventId!;
+
+      // Update registration as checked_in
+      const { error: updErr } = await supabase
+        .from('event_registrations')
+        .update({ checked_in: true })
+        .eq('event_id', targetEventId)
+        .eq('user_id', scannedData.userId);
+      if (updErr) throw updErr;
+
+      // Optional: log check-in row if table exists
+      await (supabase as any)
+        .from('check_in_logs')
+        .insert({
+          event_id: targetEventId,
+          user_id: scannedData.userId,
+          qr_code: scannedData.participantId || null,
+          zone: zone || null,
+          notes: notes || null,
+          check_in_time: new Date().toISOString()
+        });
+
+      toast({ title: 'Checked In', description: `${scannedData.userName} checked in successfully.` });
+    } catch (e) {
+      console.error(e);
+      toast({ title: 'Check-in failed', description: 'Please try again.', variant: 'destructive' });
     }
   };
 
@@ -187,37 +272,66 @@ const QRScanner: React.FC<QRScannerProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <QrCode className="w-5 h-5" />
-          QR Code Scanner
+          Participant Check-in
         </CardTitle>
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {/* Scanner Area */}
-        <div className="relative">
-          {!isScanning ? (
-            <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
-              <div className="text-center">
-                <Camera className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Camera not active</p>
-              </div>
-            </div>
-          ) : (
-            <div className="relative aspect-square rounded-lg overflow-hidden">
-              <video
-                ref={videoRef}
-                className="w-full h-full object-cover"
-                playsInline
-                muted
-              />
-              <div className="absolute inset-0 border-2 border-primary rounded-lg pointer-events-none">
-                <div className="absolute top-2 left-2 w-6 h-6 border-t-2 border-l-2 border-primary"></div>
-                <div className="absolute top-2 right-2 w-6 h-6 border-t-2 border-r-2 border-primary"></div>
-                <div className="absolute bottom-2 left-2 w-6 h-6 border-b-2 border-l-2 border-primary"></div>
-                <div className="absolute bottom-2 right-2 w-6 h-6 border-b-2 border-r-2 border-primary"></div>
-              </div>
-            </div>
-          )}
+        {/* Event Select */}
+        <div>
+          <Label className="text-sm font-medium">Select Event *</Label>
+          <Select value={selectedEventId} onValueChange={(v) => setSelectedEventId(v)}>
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Choose event for check-in" />
+            </SelectTrigger>
+            <SelectContent>
+              {events.map((e) => (
+                <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+
+        {/* Mode Switch */}
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant={mode === 'camera' ? 'default' : 'outline'} onClick={() => setMode('camera')}>📷 Camera Scan</Button>
+          <Button variant={mode === 'manual' ? 'default' : 'outline'} onClick={() => setMode('manual')}>🧾 Manual Entry</Button>
+        </div>
+
+        {/* Scanner Area */}
+        {mode === 'camera' ? (
+          <div className="relative">
+            {!isScanning ? (
+              <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                <div className="text-center">
+                  <Camera className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">Camera not active</p>
+                </div>
+              </div>
+            ) : (
+              <div className="relative aspect-square rounded-lg overflow-hidden">
+                <video
+                  ref={videoRef}
+                  className="w-full h-full object-cover"
+                  playsInline
+                  muted
+                />
+                <div className="absolute inset-0 border-2 border-primary rounded-lg pointer-events-none">
+                  <div className="absolute top-2 left-2 w-6 h-6 border-t-2 border-l-2 border-primary"></div>
+                  <div className="absolute top-2 right-2 w-6 h-6 border-t-2 border-r-2 border-primary"></div>
+                  <div className="absolute bottom-2 left-2 w-6 h-6 border-b-2 border-l-2 border-primary"></div>
+                  <div className="absolute bottom-2 right-2 w-6 h-6 border-b-2 border-r-2 border-primary"></div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Label>QR Code / Participant ID *</Label>
+            <Input value={manualCode} onChange={(e) => setManualCode(e.target.value)} placeholder="Enter QR code or participant ID" />
+            <p className="text-xs text-muted-foreground">Enter the code from the participant's digital pass</p>
+          </div>
+        )}
 
         {/* Scan Result */}
         {scanResult && (
@@ -266,44 +380,41 @@ const QRScanner: React.FC<QRScannerProps> = ({
           </Card>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          {!isScanning ? (
-            <Button 
-              onClick={startScanning}
-              className="flex-1"
-              disabled={isProcessing}
-            >
-              <Camera className="w-4 h-4 mr-2" />
-              Start Scanning
-            </Button>
-          ) : (
-            <Button 
-              onClick={stopScanning}
-              variant="outline"
-              className="flex-1"
-            >
-              Stop Scanning
-            </Button>
-          )}
-          
-          <Button 
-            onClick={handleManualEntry}
-            variant="outline"
-            size="sm"
-          >
-            Manual Entry
-          </Button>
+        {/* Zone and Notes */}
+        <div className="space-y-2">
+          <Label>Zone (Optional)</Label>
+          <Input placeholder="e.g., Main Hall, Lab A" value={zone} onChange={(e) => setZone(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Notes (Optional)</Label>
+          <Textarea placeholder="Any additional notes..." value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
 
-        {scannedData && (
-          <Button 
-            onClick={resetScanner}
-            variant="outline"
-            className="w-full"
-          >
-            Scan Another
+        {/* Action Buttons */}
+        {mode === 'camera' ? (
+          <div className="flex gap-2">
+            {!isScanning ? (
+              <Button onClick={startScanning} className="flex-1" disabled={isProcessing || !selectedEventId && !eventId}>
+                <Camera className="w-4 h-4 mr-2" />
+                Start Camera Scan
+              </Button>
+            ) : (
+              <Button onClick={stopScanning} variant="outline" className="flex-1">
+                Stop Scanning
+              </Button>
+            )}
+          </div>
+        ) : (
+          <Button onClick={handleManualEntry} disabled={!manualCode || !selectedEventId && !eventId}>
+            Check In Participant
           </Button>
+        )}
+
+        {scannedData && (
+          <div className="space-y-2">
+            <Button onClick={handleCheckIn} disabled={!selectedEventId && !eventId}>Check In Participant</Button>
+            <Button onClick={resetScanner} variant="outline" className="w-full">Scan Another</Button>
+          </div>
         )}
       </CardContent>
     </Card>

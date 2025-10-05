@@ -184,15 +184,25 @@ const Auth = () => {
               // Add role to user_roles table if not exists
               const { error: roleError } = await supabase
                 .from('user_roles')
-                .upsert([{
+                .upsert({
                   user_id: signInData.user.id,
-                  role: testUser.role as any
-                }], {
+                  role: testUser.role
+                }, {
                   onConflict: 'user_id,role'
                 });
 
               if (roleError) {
                 console.warn('Could not add role:', roleError.message);
+                // Try to update the existing participant role
+                const { error: updateError } = await supabase
+                  .from('user_roles')
+                  .update({ role: testUser.role })
+                  .eq('user_id', signInData.user.id)
+                  .eq('role', 'participant');
+                
+                if (updateError) {
+                  console.warn('Could not update role:', updateError.message);
+                }
               }
 
               toast({
@@ -229,15 +239,25 @@ const Auth = () => {
               // Add role to user_roles table
               const { error: roleError } = await supabase
                 .from('user_roles')
-                .upsert([{
+                .upsert({
                   user_id: signUpData.user.id,
-                  role: testUser.role as any
-                }], {
+                  role: testUser.role
+                }, {
                   onConflict: 'user_id,role'
                 });
 
               if (roleError) {
                 console.warn('Could not add role:', roleError.message);
+                // Try to update the existing participant role
+                const { error: updateError } = await supabase
+                  .from('user_roles')
+                  .update({ role: testUser.role })
+                  .eq('user_id', signUpData.user.id)
+                  .eq('role', 'participant');
+                
+                if (updateError) {
+                  console.warn('Could not update role:', updateError.message);
+                }
               }
 
               toast({
