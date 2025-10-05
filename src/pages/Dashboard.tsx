@@ -167,34 +167,7 @@ const Dashboard = () => {
           </div>
 
           {/* Role-specific Quick Actions */}
-          {(userData.primaryRole === 'Organizer' || userData.primaryRole === 'Admin') && (
-            <div className="mb-6 sm:mb-8">
-              <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 flex items-center">
-                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-primary" />
-                Quick Actions
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                <Link to="/organizer">
-                  <Button variant="hero" className="w-full h-20 flex flex-col items-center justify-center">
-                    <Calendar className="w-6 h-6 mb-2" />
-                    <span className="text-sm">Manage Events</span>
-                  </Button>
-                </Link>
-                <Link to="/organizer">
-                  <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center">
-                    <Users className="w-6 h-6 mb-2" />
-                    <span className="text-sm">Manage Volunteers</span>
-                  </Button>
-                </Link>
-                <Link to="/events">
-                  <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center">
-                    <BarChart3 className="w-6 h-6 mb-2" />
-                    <span className="text-sm">View Analytics</span>
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          )}
+          {/* Participant-only: Quick Actions removed for organizer/volunteer/admin to avoid duplication */}
 
           {(userData.primaryRole === 'Volunteer' || userData.primaryRole === 'Admin') && (
             <div className="mb-6 sm:mb-8">

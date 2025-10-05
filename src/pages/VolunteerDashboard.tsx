@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ClipboardList, QrCode, CheckCircle, Clock, MapPin } from 'lucide-react';
+import { ClipboardList, QrCode, CheckCircle, Clock, MapPin, Users } from 'lucide-react';
 import Navigation from '@/components/layout/Navigation';
 import { format } from 'date-fns';
 import QRScanner from '@/components/ui/QRScanner';
@@ -135,11 +135,36 @@ export default function VolunteerDashboard() {
     <div className="bg-background">
       <Navigation />
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Volunteer Dashboard</h1>
-          <p className="text-muted-foreground">Manage your tasks and check-in participants</p>
-        </div>
+      <div className="pt-16 sm:pt-20 pb-12 sm:pb-16">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+          {/* Welcome + role pill */}
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">
+                Welcome back, <span className="text-primary">{user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'Volunteer'}</span>!
+              </h1>
+              <span className="text-xs sm:text-sm text-muted-foreground px-2 sm:px-3 py-1 bg-muted rounded-full w-fit">Volunteer</span>
+            </div>
+            <p className="text-sm sm:text-base text-muted-foreground">Volunteer Dashboard – Complete your assigned tasks</p>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 flex items-center">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-primary" />
+              Volunteer Tasks
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <Button variant="hero" className="h-16 sm:h-20" onClick={() => setActiveTab('tasks')}>
+                <ClipboardList className="w-5 h-5 mr-2" />
+                View Assignments
+              </Button>
+              <Button variant="outline" className="h-16 sm:h-20" onClick={() => setActiveTab('checkin')}>
+                <QrCode className="w-5 h-5 mr-2" />
+                QR Check-in
+              </Button>
+            </div>
+          </div>
 
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-3 mb-8">
@@ -266,9 +291,10 @@ export default function VolunteerDashboard() {
           </TabsContent>
 
           <TabsContent value="checkin">
-            <QRScanner onCheckInSuccess={fetchAssignments} />
+            <QRScanner onScanSuccess={fetchAssignments} />
           </TabsContent>
         </Tabs>
+        </div>
       </div>
     </div>
   );

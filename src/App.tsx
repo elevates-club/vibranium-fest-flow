@@ -10,6 +10,8 @@ import Events from "./pages/Events";
 import Dashboard from "./pages/Dashboard";
 import Organizer from "./pages/Organizer";
 import VolunteerDashboard from "./pages/VolunteerDashboard";
+import RoleDashboard from "./pages/RoleDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Account from "./pages/Account";
@@ -40,22 +42,27 @@ const App = () => (
                 <Route path="/events" element={<Events />} />
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <RoleDashboard />
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer" element={
                   <ProtectedRoute requiredRoles={['organizer', 'admin']}>
-                    <Organizer />
+                    <RoleDashboard />
                   </ProtectedRoute>
                 } />
                 <Route path="/volunteer" element={
                   <ProtectedRoute requiredRoles={['volunteer', 'admin']}>
-                    <VolunteerDashboard />
+                    <RoleDashboard />
                   </ProtectedRoute>
                 } />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/login" element={<Auth />} />
                 <Route path="/register" element={<Auth />} />
+                <Route path="/admin" element={
+                  <ProtectedRoute requiredRoles={['admin']}>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />
                 <Route path="/account" element={
                   <ProtectedRoute>
                     <Account />

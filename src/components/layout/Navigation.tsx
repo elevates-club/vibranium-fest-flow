@@ -26,21 +26,19 @@ const Navigation = () => {
   // Base navigation items for all users
   const baseNavigation = [
     { name: 'Events', href: '/events', icon: Calendar },
-    { name: 'Dashboard', href: '/dashboard', icon: User },
   ];
 
   // Role-based navigation items
   const getRoleBasedNavigation = () => {
     const roleNav = [];
     
-    // Only show Organizer link if user has organizer or admin role
-    if (userRoles.includes('organizer') || userRoles.includes('admin')) {
-      roleNav.push({ name: 'Organizer', href: '/organizer', icon: Users });
-    }
-    
-    // Only show Volunteer link if user has volunteer or admin role
-    if (userRoles.includes('volunteer') || userRoles.includes('admin')) {
-      roleNav.push({ name: 'Volunteer', href: '/volunteer', icon: Users });
+    // Prefer a single Dashboard entry per user based on role priority
+    // Priority: organizer/admin -> /dashboard (RoleDashboard renders Organizer), else volunteer -> /dashboard, else participant -> /dashboard
+    if (user) {
+      roleNav.push({ name: 'Dashboard', href: '/dashboard', icon: Users });
+    } else {
+      // Guest users should still see Dashboard (will route to protected page/sign-in flow)
+      roleNav.push({ name: 'Dashboard', href: '/dashboard', icon: User });
     }
     
     return roleNav;
