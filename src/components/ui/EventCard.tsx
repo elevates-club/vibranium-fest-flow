@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { Calendar, MapPin, Users, Clock, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import EventDescriptionModal from './EventDescriptionModal';
@@ -61,9 +62,10 @@ const EventCard = ({
         {title}
       </h3>
       <div className="mb-4">
-        <p className="text-muted-foreground text-sm line-clamp-2">
-          {description}
-        </p>
+        <div
+          className="text-muted-foreground text-sm line-clamp-2 [&_*]:inline [&_p]:inline"
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) }}
+        />
         {description.length > 100 && (
           <Button
             variant="ghost"

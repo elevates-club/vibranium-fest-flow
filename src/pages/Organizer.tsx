@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Navigation from '@/components/layout/Navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,7 +34,13 @@ import {
 } from 'lucide-react';
 
 const Organizer = () => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      return localStorage.getItem('org_active_tab') || 'overview';
+    } catch {
+      return 'overview';
+    }
+  });
   const [recentEvents, setRecentEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRegisteredMembersDialogOpen, setIsRegisteredMembersDialogOpen] = useState(false);
@@ -121,12 +127,27 @@ const Organizer = () => {
     fetchRecentEvents();
   }, [fetchRecentEvents]);
 
+  // Persist active tab to avoid UI resetting on remount/focus changes
   useEffect(() => {
-    // Preload analytics when tab switches to analytics
-    if (activeTab === 'analytics') {
-      void fetchAnalytics();
-    }
+    try { localStorage.setItem('org_active_tab', activeTab); } catch {}
   }, [activeTab]);
+
+  // Avoid refetch bursts when tab/window visibility changes rapidly
+  const lastFetchRef = React.useRef<number>(0);
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden) return;
+      const now = Date.now();
+      if (now - lastFetchRef.current > 30000) { // 30s throttle
+        lastFetchRef.current = now;
+        fetchRecentEvents();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [activeTab, fetchRecentEvents]);
+
+  // After analytics function is defined, a later effect will preload it
 
   const fetchRegisteredMembers = async (eventId: string) => {
     setMembersLoading(true);
@@ -285,6 +306,13 @@ const Organizer = () => {
       setAnalyticsLoading(false);
     }
   }, [events, toast]);
+
+  // Preload analytics when tab switches to analytics (after function is defined)
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      void fetchAnalytics();
+    }
+  }, [activeTab, fetchAnalytics]);
 
   const departments = [
     { name: "Computer Science", events: 8, participants: 234, coordinator: "Dr. Smith" },

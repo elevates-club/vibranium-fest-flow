@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import DOMPurify from 'dompurify';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -105,6 +106,39 @@ export default function EventCreation() {
     department: '',
     registration_closed: false
   });
+
+  // Persist draft locally to avoid losing data if the page reloads or tab switches
+  useEffect(() => {
+    const draftKey = 'event_creation_draft_v1';
+    try {
+      const saved = localStorage.getItem(draftKey);
+      if (!isEditMode && saved) {
+        const parsed = JSON.parse(saved);
+        // Only hydrate if dialog is about to open and fields are empty
+        setFormData((prev) => ({ ...prev, ...parsed }));
+      }
+    } catch {}
+
+    const interval = setInterval(() => {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify(formData));
+      } catch {}
+    }, 1000);
+
+    // Warn before unload if there are unsaved changes and dialog is open
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDialogOpen) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [formData, isDialogOpen, isEditMode]);
 
   // Fetch registration counts for all events
   useEffect(() => {
@@ -516,7 +550,9 @@ export default function EventCreation() {
                 {showDescPreview && (
                   <div className="p-3 rounded-md border bg-muted/30 text-sm prose prose-invert max-w-none">
                     {formData.description ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{formData.description}</ReactMarkdown>
+                      <div
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(formData.description) }}
+                      />
                     ) : 'Nothing to preview yet.'}
                   </div>
                 )}
@@ -708,7 +744,9 @@ export default function EventCreation() {
             {showDescPreview && (
               <div className="p-3 rounded-md border bg-muted/30 text-sm prose prose-invert max-w-none">
                 {formData.description ? (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{formData.description}</ReactMarkdown>
+                  <div
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(formData.description) }}
+                  />
                 ) : 'Nothing to preview yet.'}
               </div>
             )}
@@ -764,9 +802,10 @@ export default function EventCreation() {
                             )}
                           </div>
                         </div>
-                        <p className="text-sm text-muted-foreground line-clamp-3 break-words">
-                          {event.description}
-                        </p>
+                        <div
+                          className="text-sm text-muted-foreground line-clamp-3 break-words [&_*]:inline [&_p]:inline"
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(event.description) }}
+                        />
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />

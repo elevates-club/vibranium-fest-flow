@@ -1,4 +1,5 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, Users } from 'lucide-react';
 
@@ -68,10 +69,11 @@ const EventDescriptionModal = ({ isOpen, onClose, event }: EventDescriptionModal
           {/* Description */}
           <div className="space-y-2 sm:space-y-3">
             <h3 className="text-base sm:text-lg font-semibold">Event Description</h3>
-            <div className="prose prose-sm max-w-none">
-              <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap text-xs sm:text-sm break-words">
-                {event.description}
-              </p>
+            <div className="prose prose-sm max-w-none text-muted-foreground leading-relaxed text-xs sm:text-sm break-words">
+              <div
+                className="[&_p]:mb-2 [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-5 [&_h1]:text-xl [&_h2]:text-lg"
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(event.description) }}
+              />
             </div>
           </div>
         </div>
