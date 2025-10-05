@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Calendar, MapPin, Users, DollarSign, Star, Edit, Trash2, Lock, Unlock, Eye } from 'lucide-react';
+import { Plus, Calendar, MapPin, Users, DollarSign, Star, Edit, Trash2, Lock, Unlock, Eye, Mail, Phone, GraduationCap, Clock, CheckCircle } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useEvents } from '@/hooks/useEvents';
 
 export default function EventCreation() {
@@ -21,6 +22,10 @@ export default function EventCreation() {
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [eventRegistrations, setEventRegistrations] = useState<{[key: string]: number}>({});
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const [isRegisteredMembersDialogOpen, setIsRegisteredMembersDialogOpen] = useState(false);
+  const [selectedEventForMembers, setSelectedEventForMembers] = useState<any>(null);
+  const [registeredMembers, setRegisteredMembers] = useState<any[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -167,6 +172,73 @@ export default function EventCreation() {
     setIsDialogOpen(false);
     setIsEditMode(false);
     setEditingEvent(null);
+  };
+
+  const fetchRegisteredMembers = async (eventId: string) => {
+    setMembersLoading(true);
+    try {
+      const { data: registrations, error: registrationsError } = await supabase
+        .from('event_registrations')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('registration_date', { ascending: false });
+
+      if (registrationsError) {
+        console.error('Error fetching registrations:', registrationsError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch registrations.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!registrations || registrations.length === 0) {
+        setRegisteredMembers([]);
+        return;
+      }
+
+      const userIds = registrations.map(reg => reg.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, email, phone, department, year, college')
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch user profiles.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const membersWithProfiles = registrations.map(registration => {
+        const profile = profiles?.find(p => p.user_id === registration.user_id);
+        return {
+          ...registration,
+          profiles: profile || null
+        };
+      });
+
+      setRegisteredMembers(membersWithProfiles);
+    } catch (error) {
+      console.error('Error fetching registered members:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch registered members.",
+        variant: "destructive"
+      });
+    } finally {
+      setMembersLoading(false);
+    }
+  };
+
+  const handleViewRegisteredMembers = (event: any) => {
+    setSelectedEventForMembers(event);
+    setIsRegisteredMembersDialogOpen(true);
+    fetchRegisteredMembers(event.id);
   };
 
   const handleEditEvent = (event: any) => {
@@ -549,10 +621,19 @@ export default function EventCreation() {
                       </div>
                       <div className="flex flex-col sm:items-end gap-2 sm:ml-4">
                         <div className="text-left sm:text-right text-xs sm:text-sm text-muted-foreground">
-                          <p className="font-medium truncate">{event.department}</p>
+                          <p className="font-medium truncate">{(event as any).department || 'All Departments'}</p>
                           <p className="text-xs capitalize">{event.status}</p>
                         </div>
                         <div className="flex gap-2 justify-end sm:justify-start">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewRegisteredMembers(event)}
+                            className="h-8 w-8 p-0"
+                            title="Show Registered Students"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -595,6 +676,109 @@ export default function EventCreation() {
           </div>
         </CardContent>
       </Card>
+      {/* Registered Members Dialog */}
+      <Dialog open={isRegisteredMembersDialogOpen} onOpenChange={setIsRegisteredMembersDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Registered Students - {selectedEventForMembers?.title}
+            </DialogTitle>
+            <DialogDescription>
+              View all registered participants for this event
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="overflow-y-auto max-h-[60vh]">
+            {membersLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <span className="ml-2 text-muted-foreground">Loading students...</span>
+              </div>
+            ) : registeredMembers.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No registered students found for this event.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Total registered: {registeredMembers.length} students
+                  </p>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle className="w-4 h-4" />
+                    <span>
+                      {registeredMembers.filter(member => member.checked_in).length} checked in
+                    </span>
+                  </div>
+                </div>
+
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Year</TableHead>
+                      <TableHead>College</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Registered</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {registeredMembers.map((member) => (
+                      <TableRow key={member.id}>
+                        <TableCell className="font-medium">
+                          {member.profiles?.first_name && member.profiles?.last_name 
+                            ? `${member.profiles.first_name} ${member.profiles.last_name}`.trim()
+                            : member.profiles?.first_name || member.profiles?.last_name || 'Profile Incomplete'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-muted-foreground" />
+                            {member.profiles?.email || 'N/A'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-muted-foreground" />
+                            {member.profiles?.phone || 'Not provided'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <GraduationCap className="w-4 h-4 text-muted-foreground" />
+                            {member.profiles?.department || 'Not provided'}
+                          </div>
+                        </TableCell>
+                        <TableCell>{member.profiles?.year || 'Not provided'}</TableCell>
+                        <TableCell>{member.profiles?.college || 'Not provided'}</TableCell>
+                        <TableCell>
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            member.checked_in ? 'bg-primary text-primary-foreground' : 
+                            member.status === 'registered' ? 'bg-secondary text-secondary-foreground' : 
+                            'bg-muted text-muted-foreground'
+                          }`}>
+                            {member.checked_in ? 'Checked In' : member.status || 'Registered'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Clock className="w-4 h-4" />
+                            {new Date(member.registration_date).toLocaleDateString()}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
