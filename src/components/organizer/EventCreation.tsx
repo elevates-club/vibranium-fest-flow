@@ -4,12 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Calendar, MapPin, Users, DollarSign, Star, Edit, Trash2, Lock, Unlock, Eye, Mail, Phone, GraduationCap, Clock, CheckCircle } from 'lucide-react';
+import { Plus, Calendar, MapPin, Users, DollarSign, Star, Edit, Trash2, Lock, Unlock, Eye, Mail, Phone, GraduationCap, Clock, CheckCircle, Maximize2, Minimize2, Eye as EyeIcon } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useEvents } from '@/hooks/useEvents';
 
@@ -24,6 +28,66 @@ export default function EventCreation() {
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [eventRegistrations, setEventRegistrations] = useState<{[key: string]: number}>({});
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const [isDescFullscreen, setIsDescFullscreen] = useState(false);
+  const [showDescPreview, setShowDescPreview] = useState(false);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const descriptionFsRef = useRef<HTMLTextAreaElement>(null);
+
+  const applyFormat = (
+    targetRef: React.RefObject<HTMLTextAreaElement>,
+    action: 'bold' | 'strike' | 'ul' | 'ol' | 'quote' | 'code'
+  ) => {
+    const el = targetRef.current;
+    if (!el) return;
+    const value = el.value;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    const selected = value.slice(start, end);
+
+    const wrap = (pre: string, post: string, placeholder = 'text') => {
+      const content = selected || placeholder;
+      return value.slice(0, start) + pre + content + post + value.slice(end);
+    };
+
+    const prefixLines = (fn: (line: string, idx: number) => string) => {
+      const content = (selected || 'item').split('\n');
+      const withPrefix = content.map((l, i) => fn(l, i)).join('\n');
+      return value.slice(0, start) + withPrefix + value.slice(end);
+    };
+
+    let newValue = value;
+    switch (action) {
+      case 'bold':
+        newValue = wrap('**', '**');
+        break;
+      case 'strike':
+        newValue = wrap('~~', '~~');
+        break;
+      case 'quote':
+        newValue = prefixLines((l) => `> ${l}`);
+        break;
+      case 'ul':
+        newValue = prefixLines((l) => `- ${l}`);
+        break;
+      case 'ol':
+        newValue = prefixLines((l, i) => `${i + 1}. ${l}`);
+        break;
+      case 'code':
+        newValue = wrap('\n```\n', '\n```\n', 'code');
+        break;
+    }
+
+    setFormData((prev) => ({ ...prev, description: newValue }));
+
+    // restore caret position after update
+    requestAnimationFrame(() => {
+      const pos = start + (newValue.length - value.length);
+      try {
+        el.focus();
+        el.setSelectionRange(pos, pos);
+      } catch {}
+    });
+  };
   const [isRegisteredMembersDialogOpen, setIsRegisteredMembersDialogOpen] = useState(false);
   const [selectedEventForMembers, setSelectedEventForMembers] = useState<any>(null);
   const [registeredMembers, setRegisteredMembers] = useState<any[]>([]);
@@ -419,15 +483,43 @@ export default function EventCreation() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Describe your event"
-                  rows={3}
-                  required
-                />
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="description">Description</Label>
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setShowDescPreview(v => !v)}>
+                      <EyeIcon className="w-4 h-4 mr-2" /> {showDescPreview ? 'Hide Preview' : 'Preview'}
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setIsDescFullscreen(true)}>
+                      <Maximize2 className="w-4 h-4 mr-2" /> Expand
+                    </Button>
+                  </div>
+                </div>
+                <div className="rounded-md border">
+                  <ReactQuill
+                    theme="snow"
+                    value={formData.description}
+                    onChange={(html) => setFormData({ ...formData, description: html })}
+                    modules={{
+                      toolbar: [
+                        [{ header: [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ list: 'ordered' }, { list: 'bullet' }],
+                        [{ align: [] }],
+                        ['blockquote', 'code-block'],
+                        ['link'],
+                        ['clean']
+                      ],
+                    }}
+                    className="min-h-[240px] bg-background"
+                  />
+                </div>
+                {showDescPreview && (
+                  <div className="p-3 rounded-md border bg-muted/30 text-sm prose prose-invert max-w-none">
+                    {formData.description ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{formData.description}</ReactMarkdown>
+                    ) : 'Nothing to preview yet.'}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -575,6 +667,57 @@ export default function EventCreation() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Fullscreen Description Editor */}
+      <Dialog open={isDescFullscreen} onOpenChange={setIsDescFullscreen}>
+        <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="flex items-center justify-between w-full">
+              <span>Edit Description</span>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowDescPreview(v => !v)}>
+                  <EyeIcon className="w-4 h-4 mr-2" /> {showDescPreview ? 'Hide Preview' : 'Show Preview'}
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setIsDescFullscreen(false)}>
+                  <Minimize2 className="w-4 h-4 mr-2" /> Close
+                </Button>
+              </div>
+            </DialogTitle>
+            <DialogDescription>Write the full event details. Supports new lines; toggle preview on or off.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-3">
+            <div className="rounded-md border">
+              <ReactQuill
+                theme="snow"
+                value={formData.description}
+                onChange={(html) => setFormData({ ...formData, description: html })}
+                modules={{
+                  toolbar: [
+                    [{ header: [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    [{ align: [] }],
+                    ['blockquote', 'code-block'],
+                    ['link'],
+                    ['clean']
+                  ],
+                }}
+                className="min-h-[40vh] bg-background"
+              />
+            </div>
+            {showDescPreview && (
+              <div className="p-3 rounded-md border bg-muted/30 text-sm prose prose-invert max-w-none">
+                {formData.description ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{formData.description}</ReactMarkdown>
+                ) : 'Nothing to preview yet.'}
+              </div>
+            )}
+          </div>
+          <div className="flex-shrink-0 flex justify-end gap-2 pt-3 border-t">
+            <Button variant="outline" onClick={() => setIsDescFullscreen(false)}>Done</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>

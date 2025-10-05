@@ -296,7 +296,17 @@ const Events = () => {
     }
   };
 
-  // Utility function to format date and time with proper timezone handling
+  // Utility functions to format date/time
+  const formatDateDMY = (dateStr: string) => {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Invalid Date';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  // Format with dd/mm/yyyy and local time range
   const formatEventDateTime = (startDate: string, endDate?: string | null) => {
     try {
       const start = new Date(startDate);
@@ -306,13 +316,8 @@ const Events = () => {
         return { date: 'Invalid Date', time: 'Invalid Time' };
       }
       
-      // Format date in user's locale
-      const formattedDate = start.toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        weekday: 'short'
-      });
+      // dd/mm/yyyy
+      const formattedDate = formatDateDMY(startDate);
       
       // Format time in user's locale with explicit timezone handling
       const formattedStartTime = start.toLocaleTimeString(undefined, {
@@ -468,8 +473,8 @@ const Events = () => {
                     key={event.id || index}
                     title={event.title}
                     description={event.description}
-                    date={new Date(event.start_date).toLocaleDateString()}
-                    time={`${new Date(event.start_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(event.end_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                    date={event.date}
+                    time={event.time}
                     location={event.location}
                     attendees={event.attendees || 0}
                     maxAttendees={event.max_attendees}
