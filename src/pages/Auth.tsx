@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -182,11 +183,11 @@ const Auth = () => {
               console.log('Test user signed in successfully:', signInData.user);
               
               // Add role to user_roles table if not exists
-              const { error: roleError } = await supabase
+              const { error: roleError } = await (supabase as any)
                 .from('user_roles')
                 .upsert({
                   user_id: signInData.user.id,
-                  role: testUser.role
+                  role: testUser.role as any
                 }, {
                   onConflict: 'user_id,role'
                 });
@@ -194,9 +195,9 @@ const Auth = () => {
               if (roleError) {
                 console.warn('Could not add role:', roleError.message);
                 // Try to update the existing participant role
-                const { error: updateError } = await supabase
+                const { error: updateError } = await (supabase as any)
                   .from('user_roles')
-                  .update({ role: testUser.role })
+                  .update({ role: testUser.role as any })
                   .eq('user_id', signInData.user.id)
                   .eq('role', 'participant');
                 
@@ -237,11 +238,11 @@ const Auth = () => {
               console.log('Test user created successfully:', signUpData.user);
               
               // Add role to user_roles table
-              const { error: roleError } = await supabase
+              const { error: roleError } = await (supabase as any)
                 .from('user_roles')
                 .upsert({
                   user_id: signUpData.user.id,
-                  role: testUser.role
+                  role: testUser.role as any
                 }, {
                   onConflict: 'user_id,role'
                 });
@@ -249,9 +250,9 @@ const Auth = () => {
               if (roleError) {
                 console.warn('Could not add role:', roleError.message);
                 // Try to update the existing participant role
-                const { error: updateError } = await supabase
+                const { error: updateError } = await (supabase as any)
                   .from('user_roles')
-                  .update({ role: testUser.role })
+                  .update({ role: testUser.role as any })
                   .eq('user_id', signUpData.user.id)
                   .eq('role', 'participant');
                 
@@ -323,8 +324,8 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-2 sm:p-4">
-      <div className="w-full max-w-sm sm:max-w-md mx-auto">
-        <Card className="bg-gradient-card border-border shadow-lg">
+      <div className="w-full max-w-[94vw] sm:max-w-md mx-auto">
+        <Card className="bg-gradient-card border-border shadow-lg overflow-hidden">
           <CardHeader className="text-center pb-3 sm:pb-6 px-4 sm:px-6 pt-4 sm:pt-6">
             <CardTitle className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-hero bg-clip-text text-transparent">
               {isSignUp ? 'Join Vibranium' : isForgotPassword ? 'Reset Password' : 'Welcome Back'}
@@ -343,7 +344,7 @@ const Auth = () => {
             <form onSubmit={isForgotPassword ? handleForgotPassword : handleSubmit} className="space-y-3 sm:space-y-4">
               {isSignUp && (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4 min-w-0">
                     <div className="space-y-1 sm:space-y-2">
                       <Label htmlFor="firstName" className="text-xs sm:text-sm font-medium">First Name</Label>
                       <div className="relative">
@@ -353,7 +354,7 @@ const Auth = () => {
                           name="firstName"
                           value={formData.firstName}
                           onChange={handleInputChange}
-                          className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
+                          className="w-full pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
                           placeholder="John"
                           required
                         />
@@ -366,7 +367,7 @@ const Auth = () => {
                         name="lastName"
                         value={formData.lastName}
                         onChange={handleInputChange}
-                        className="h-9 sm:h-10 md:h-11 text-sm sm:text-base"
+                        className="w-full h-9 sm:h-10 md:h-11 text-sm sm:text-base"
                         placeholder="Doe"
                         required
                       />
@@ -383,7 +384,7 @@ const Auth = () => {
                         type="tel"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
+                        className="w-full pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
                         placeholder="+91 9876543210"
                         required
                       />
@@ -391,49 +392,62 @@ const Auth = () => {
                   </div>
 
                   <div className="space-y-1 sm:space-y-2">
-                    <Label htmlFor="department" className="text-xs sm:text-sm font-medium">Department</Label>
-                    <div className="relative">
+                    <Label className="text-xs sm:text-sm font-medium">Department</Label>
+                    <div className="relative min-w-0">
                       <GraduationCap className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
-                      <Input
-                        id="department"
-                        name="department"
-                        value={formData.department}
-                        onChange={handleInputChange}
-                        className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
-                        placeholder="Computer Science"
-                        required
-                      />
+                      <div className="pl-8 sm:pl-10 min-w-0">
+                        <Select value={formData.department} onValueChange={(value) => setFormData(prev => ({ ...prev, department: value }))}>
+                          <SelectTrigger className="w-full h-9 sm:h-10 md:h-11 text-sm sm:text-base text-left truncate">
+                            <SelectValue placeholder="Select department" />
+                          </SelectTrigger>
+                          <SelectContent className="w-[92vw] sm:w-auto max-w-[92vw] sm:max-w-none max-h-[55vh] overflow-auto">
+                            <SelectItem value="Artificial Intelligence & Data Science">Artificial Intelligence & Data Science</SelectItem>
+                            <SelectItem value="Computer Science Engineering in Cyber Security">Computer Science Engineering in Cyber Security</SelectItem>
+                            <SelectItem value="Civil Engineering">Civil Engineering</SelectItem>
+                            <SelectItem value="Electronics & Communication Engineering">Electronics & Communication Engineering</SelectItem>
+                            <SelectItem value="Safety & Fire Engineering">Safety & Fire Engineering</SelectItem>
+                            <SelectItem value="Computer Science & Engineering">Computer Science & Engineering</SelectItem>
+                            <SelectItem value="Computer Science & Business Systems">Computer Science & Business Systems</SelectItem>
+                            <SelectItem value="Mechanical Engineering">Mechanical Engineering</SelectItem>
+                            <SelectItem value="Science & Humanities">Science & Humanities</SelectItem>
+                            <SelectItem value="Other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
-                    <div className="space-y-1 sm:space-y-2">
-                      <Label htmlFor="year" className="text-xs sm:text-sm font-medium">Year</Label>
-                      <div className="relative">
+                    <div className="space-y-1 sm:space-y-2 min-w-0">
+                      <Label className="text-xs sm:text-sm font-medium">Year</Label>
+                      <div className="relative min-w-0">
                         <Calendar className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
-                        <Input
-                          id="year"
-                          name="year"
-                          type="number"
-                          min="1"
-                          max="5"
-                          value={formData.year}
-                          onChange={handleInputChange}
-                          className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
-                          required
-                        />
+                        <div className="pl-8 sm:pl-10 min-w-0">
+                          <Select value={String(formData.year)} onValueChange={(value) => setFormData(prev => ({ ...prev, year: Number(value) }))}>
+                            <SelectTrigger className="w-full h-9 sm:h-10 md:h-11 text-sm sm:text-base text-left">
+                              <SelectValue placeholder="Select year" />
+                            </SelectTrigger>
+                            <SelectContent className="w-[60vw] sm:w-auto max-w-[90vw] max-h-[55vh] overflow-auto">
+                              <SelectItem value="1">1st Year</SelectItem>
+                              <SelectItem value="2">2nd Year</SelectItem>
+                              <SelectItem value="3">3rd Year</SelectItem>
+                              <SelectItem value="4">4th Year</SelectItem>
+                              <SelectItem value="5">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </div>
-                    <div className="space-y-1 sm:space-y-2">
+                    <div className="space-y-1 sm:space-y-2 min-w-0">
                       <Label htmlFor="college" className="text-xs sm:text-sm font-medium">College</Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+                      <div className="relative min-w-0">
+                        <GraduationCap className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                         <Input
                           id="college"
                           name="college"
                           value={formData.college}
                           onChange={handleInputChange}
-                          className="pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
+                          className="w-full pl-8 sm:pl-10 h-9 sm:h-10 md:h-11 text-sm sm:text-base"
                           placeholder="ABC College"
                           required
                         />

@@ -45,6 +45,12 @@ const Organizer = () => {
   const { toast } = useToast();
 
   // Analytics state
+  // Participants tab state
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [isParticipantDialogOpen, setIsParticipantDialogOpen] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
+  const [participantEvents, setParticipantEvents] = useState<any[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [funnel, setFunnel] = useState<{ views?: number; registrations: number; checkins: number }>({ registrations: 0, checkins: 0 });
   const [categoryBreakdown, setCategoryBreakdown] = useState<{ label: string; registrations: number }[]>([]);
@@ -291,6 +297,44 @@ const Organizer = () => {
     }
   }, [activeTab, fetchAnalytics]);
 
+  // Load participants when switching to participants tab
+  useEffect(() => {
+    const load = async () => {
+      if (activeTab !== 'participants') return;
+      setParticipantsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('user_id, first_name, last_name, email, phone, department, year, college');
+        if (error) throw error;
+        setParticipants(data || []);
+      } catch (e) {
+        console.error('Error loading participants', e);
+        toast({ title: 'Error', description: 'Failed to load participants.', variant: 'destructive' });
+      } finally {
+        setParticipantsLoading(false);
+      }
+    };
+    void load();
+  }, [activeTab, toast]);
+
+  const openParticipant = async (participant: any) => {
+    setSelectedParticipant(participant);
+    setIsParticipantDialogOpen(true);
+    try {
+      const { data, error } = await supabase
+        .from('event_registrations')
+        .select('registration_date, checked_in, events(* )')
+        .eq('user_id', participant.user_id)
+        .order('registration_date', { ascending: false });
+      if (error) throw error;
+      setParticipantEvents(data || []);
+    } catch (e) {
+      console.error('Error loading participant events', e);
+      toast({ title: 'Error', description: 'Failed to load participant events.', variant: 'destructive' });
+    }
+  };
+
   const departments = [
     { name: "Computer Science", events: 8, participants: 234, coordinator: "Dr. Smith" },
     { name: "Electronics", events: 6, participants: 187, coordinator: "Prof. Johnson" },
@@ -316,7 +360,7 @@ const Organizer = () => {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
-            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1 sm:gap-2 h-auto">
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 gap-1 sm:gap-2 h-auto">
               <TabsTrigger value="overview" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
                 <span className="hidden sm:inline">Overview</span>
                 <span className="sm:hidden">Overview</span>
@@ -324,6 +368,10 @@ const Organizer = () => {
               <TabsTrigger value="events" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
                 <span className="hidden sm:inline">Events</span>
                 <span className="sm:hidden">Events</span>
+              </TabsTrigger>
+              <TabsTrigger value="participants" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
+                <span className="hidden sm:inline">Participants</span>
+                <span className="sm:hidden">Users</span>
               </TabsTrigger>
               <TabsTrigger value="qr-management" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
                 <span className="hidden sm:inline">QR Codes</span>
@@ -338,6 +386,33 @@ const Organizer = () => {
                 <span className="sm:hidden">Stats</span>
               </TabsTrigger>
             </TabsList>
+            <TabsContent value="participants">
+              <Card>
+                <CardHeader className="p-3 sm:p-6">
+                  <CardTitle className="text-lg sm:text-xl">Participants</CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6">
+                  {participantsLoading ? (
+                    <div className="text-center py-8 text-muted-foreground">Loading participants...</div>
+                  ) : participants.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No participants found</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {participants.map((p) => (
+                        <div key={p.user_id} className="flex items-center justify-between p-3 bg-gradient-subtle rounded-lg border border-border">
+                          <div className="min-w-0">
+                            <div className="font-medium text-sm sm:text-base truncate">{(p.first_name || '') + ' ' + (p.last_name || '') || p.email}</div>
+                            <div className="text-xs sm:text-sm text-muted-foreground truncate">{p.email}</div>
+                            <div className="text-xs text-muted-foreground truncate">{p.department || 'Department not set'}</div>
+                          </div>
+                          <Button size="sm" variant="outline" onClick={() => openParticipant(p)}>View Events</Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             <TabsContent value="overview">
               <div className="space-y-4 sm:space-y-6">
@@ -759,6 +834,31 @@ const Organizer = () => {
                 </Table>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Participant Events Dialog */}
+      <Dialog open={isParticipantDialogOpen} onOpenChange={setIsParticipantDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="text-lg sm:text-xl">Participant Events</DialogTitle>
+            <DialogDescription>{selectedParticipant?.first_name ? `${selectedParticipant.first_name} ${selectedParticipant.last_name || ''}` : selectedParticipant?.email}</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto p-1 space-y-3">
+            {participantEvents.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">No registrations found</div>
+            ) : (
+              participantEvents.map((r: any) => (
+                <div key={r.events?.id + r.registration_date} className="p-3 bg-gradient-subtle rounded-lg border border-border">
+                  <div className="font-medium truncate">{r.events?.title || 'Event'}</div>
+                  <div className="text-xs text-muted-foreground">{new Date(r.registration_date).toLocaleDateString()} • {r.checked_in ? 'Checked in' : 'Registered'}</div>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="flex-shrink-0 flex justify-end pt-3 border-t">
+            <Button variant="outline" onClick={() => setIsParticipantDialogOpen(false)}>Close</Button>
           </div>
         </DialogContent>
       </Dialog>

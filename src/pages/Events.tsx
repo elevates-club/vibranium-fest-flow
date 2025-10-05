@@ -3,6 +3,7 @@ import Navigation from '@/components/layout/Navigation';
 import EventCard from '@/components/ui/EventCard';
 import LoginPromptModal from '@/components/ui/LoginPromptModal';
 import { Button } from '@/components/ui/button';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -34,6 +35,7 @@ const Events = () => {
     email: '',
     phone: '',
     department: '',
+    customDepartment: '',
     year: ''
   });
   const { user } = useAuth();
@@ -64,6 +66,7 @@ const Events = () => {
         email: user.email || '',
         phone: user.user_metadata?.phone || '',
         department: user.user_metadata?.department || '',
+        customDepartment: '',
         year: user.user_metadata?.year || ''
       });
     }
@@ -591,15 +594,37 @@ const Events = () => {
                   </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="department" className="text-sm font-medium">Department</Label>
-                  <Input
-                    id="department"
-                    value={registrationForm.department}
-                    onChange={(e) => setRegistrationForm({ ...registrationForm, department: e.target.value })}
-                    className="h-10 sm:h-11"
-                  />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="department" className="text-sm font-medium">Department</Label>
+              <Select
+                value={registrationForm.department}
+                onValueChange={(value) => setRegistrationForm({ ...registrationForm, department: value })}
+              >
+                <SelectTrigger id="department" className="h-10 sm:h-11">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Artificial Intelligence & Data Science">Artificial Intelligence & Data Science</SelectItem>
+                  <SelectItem value="Computer Science Engineering in Cyber Security">Computer Science Engineering in Cyber Security</SelectItem>
+                  <SelectItem value="Civil Engineering">Civil Engineering</SelectItem>
+                  <SelectItem value="Electronics & Communication Engineering">Electronics & Communication Engineering</SelectItem>
+                  <SelectItem value="Safety & Fire Engineering">Safety & Fire Engineering</SelectItem>
+                  <SelectItem value="Computer Science & Engineering">Computer Science & Engineering</SelectItem>
+                  <SelectItem value="Computer Science & Business Systems">Computer Science & Business Systems</SelectItem>
+                  <SelectItem value="Mechanical Engineering">Mechanical Engineering</SelectItem>
+                  <SelectItem value="Science & Humanities">Science & Humanities</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              {registrationForm.department === 'Other' && (
+                <Input
+                  placeholder="Type your department"
+                  value={registrationForm.customDepartment}
+                  onChange={(e) => setRegistrationForm({ ...registrationForm, customDepartment: e.target.value })}
+                  className="h-10 sm:h-11 mt-2"
+                />
+              )}
+            </div>
               </div>
             </div>
           )}
