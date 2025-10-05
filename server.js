@@ -55,7 +55,7 @@ app.post('/send-event-registration', async (req, res) => {
     const formattedEventDetails = {
       title: eventDetails.title || 'Untitled Event',
       date: eventDetails.start_date ? new Date(eventDetails.start_date).toLocaleDateString() : 'TBD',
-      time: eventDetails.start_date ? new Date(eventDetails.start_date).toLocaleTimeString() : 'TBD',
+      time: eventDetails.start_date ? new Date(eventDetails.start_date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true }) : 'TBD',
       location: eventDetails.location || 'TBD',
       category: eventDetails.category || 'General',
       description: eventDetails.description || 'No description available',

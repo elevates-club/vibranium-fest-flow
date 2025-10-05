@@ -45,6 +45,13 @@ const Organizer = () => {
   const { toast } = useToast();
 
   // Analytics state
+  // Overview quick stats (real data)
+  const [totalEvents, setTotalEvents] = useState<number>(0);
+  const [totalRegistrations, setTotalRegistrations] = useState<number>(0);
+  const [totalCheckins, setTotalCheckins] = useState<number>(0);
+
+  // Department overview (real data)
+  const [departmentOverview, setDepartmentOverview] = useState<{ name: string; participants: number }[]>([]);
   // Participants tab state
   const [participants, setParticipants] = useState<any[]>([]);
   const [participantsLoading, setParticipantsLoading] = useState(false);
@@ -111,6 +118,13 @@ const Organizer = () => {
       );
 
       setRecentEvents(eventsWithStats.slice(0, 5)); // Show only recent 5
+
+      // Set quick stats
+      setTotalEvents(events.length);
+      const regSum = eventsWithStats.reduce((acc, e: any) => acc + (e.registrations || 0), 0);
+      const checkSum = eventsWithStats.reduce((acc, e: any) => acc + (e.checkins || 0), 0);
+      setTotalRegistrations(regSum);
+      setTotalCheckins(checkSum);
     } catch (error) {
       console.error('Error fetching recent events:', error);
       toast({
@@ -297,6 +311,28 @@ const Organizer = () => {
     }
   }, [activeTab, fetchAnalytics]);
 
+  // Department overview (participants per department)
+  useEffect(() => {
+    const loadDept = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('event_registrations')
+          .select('event_id, events(department)');
+        if (error) throw error;
+        const counts = new Map<string, number>();
+        (data || []).forEach((r: any) => {
+          const dept = r.events?.department || 'Unknown';
+          counts.set(dept, (counts.get(dept) || 0) + 1);
+        });
+        const list = Array.from(counts.entries()).map(([name, participants]) => ({ name, participants }));
+        setDepartmentOverview(list);
+      } catch (e) {
+        console.error('Error loading department overview', e);
+      }
+    };
+    void loadDept();
+  }, []);
+
   // Load participants when switching to participants tab
   useEffect(() => {
     const load = async () => {
@@ -416,33 +452,33 @@ const Organizer = () => {
 
             <TabsContent value="overview">
               <div className="space-y-4 sm:space-y-6">
-                {/* Quick Stats */}
+                {/* Quick Stats (real data) */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                   <Card className="bg-gradient-card border-border">
                     <CardContent className="p-3 sm:p-4 text-center">
                       <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-primary mx-auto mb-1 sm:mb-2" />
-                      <div className="text-lg sm:text-2xl font-bold text-foreground">25</div>
+                      <div className="text-lg sm:text-2xl font-bold text-foreground">{totalEvents}</div>
                       <div className="text-xs sm:text-sm text-muted-foreground">Total Events</div>
                     </CardContent>
                   </Card>
                   <Card className="bg-gradient-card border-border">
                     <CardContent className="p-3 sm:p-4 text-center">
                       <Users className="w-5 h-5 sm:w-6 sm:h-6 text-secondary mx-auto mb-1 sm:mb-2" />
-                      <div className="text-lg sm:text-2xl font-bold text-foreground">1,247</div>
+                      <div className="text-lg sm:text-2xl font-bold text-foreground">{totalRegistrations}</div>
                       <div className="text-xs sm:text-sm text-muted-foreground">Registrations</div>
                     </CardContent>
                   </Card>
                   <Card className="bg-gradient-card border-border">
                     <CardContent className="p-3 sm:p-4 text-center">
                       <UserCheck className="w-5 h-5 sm:w-6 sm:h-6 text-accent mx-auto mb-1 sm:mb-2" />
-                      <div className="text-lg sm:text-2xl font-bold text-foreground">89%</div>
+                      <div className="text-lg sm:text-2xl font-bold text-foreground">{totalRegistrations > 0 ? Math.round((totalCheckins/totalRegistrations)*100) : 0}%</div>
                       <div className="text-xs sm:text-sm text-muted-foreground">Check-in Rate</div>
                     </CardContent>
                   </Card>
                   <Card className="bg-gradient-card border-border">
                     <CardContent className="p-3 sm:p-4 text-center">
                       <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-primary mx-auto mb-1 sm:mb-2" />
-                      <div className="text-lg sm:text-2xl font-bold text-foreground">4.8</div>
+                      <div className="text-lg sm:text-2xl font-bold text-foreground">—</div>
                       <div className="text-xs sm:text-sm text-muted-foreground">Avg Rating</div>
                     </CardContent>
                   </Card>
@@ -492,31 +528,30 @@ const Organizer = () => {
                   </CardContent>
                 </Card>
 
-                {/* Department Overview */}
+                {/* Department Overview (real data) */}
                 <Card>
                   <CardHeader className="p-3 sm:p-6">
                     <CardTitle className="text-lg sm:text-xl">Department Overview</CardTitle>
                   </CardHeader>
                   <CardContent className="p-3 sm:p-6">
                     <div className="space-y-3 sm:space-y-4">
-                      {departments.map((dept) => (
-                        <div key={dept.name} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gradient-subtle rounded-lg border border-border gap-3 sm:gap-4">
-                          <div className="min-w-0 flex-1">
-                            <div className="font-semibold text-foreground text-sm sm:text-base">{dept.name}</div>
-                            <div className="text-xs sm:text-sm text-muted-foreground">Coordinator: {dept.coordinator}</div>
-                          </div>
-                          <div className="flex items-center justify-between sm:justify-end space-x-4 sm:space-x-6 text-xs sm:text-sm">
-                            <div className="text-center">
-                              <div className="font-bold text-primary text-sm sm:text-base">{dept.events}</div>
-                              <div className="text-muted-foreground">Events</div>
+                      {departmentOverview.length === 0 ? (
+                        <div className="text-center py-6 text-muted-foreground">No data</div>
+                      ) : (
+                        departmentOverview.map((dept) => (
+                          <div key={dept.name} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gradient-subtle rounded-lg border border-border gap-3 sm:gap-4">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-semibold text-foreground text-sm sm:text-base truncate">{dept.name}</div>
                             </div>
-                            <div className="text-center">
-                              <div className="font-bold text-secondary text-sm sm:text-base">{dept.participants}</div>
-                              <div className="text-muted-foreground">Participants</div>
+                            <div className="flex items-center justify-between sm:justify-end space-x-6 text-xs sm:text-sm">
+                              <div className="text-center">
+                                <div className="font-bold text-secondary text-sm sm:text-base">{dept.participants}</div>
+                                <div className="text-muted-foreground">Participants</div>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   </CardContent>
                 </Card>

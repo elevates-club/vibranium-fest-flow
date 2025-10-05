@@ -50,7 +50,7 @@ async function sendTestEmail(transporter) {
   const testEventDetails = {
     title: 'Test Event - Code Crack Competition',
     date: new Date().toLocaleDateString(),
-    time: new Date().toLocaleTimeString(),
+    time: new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true }),
     location: 'Main Auditorium',
     category: 'Competition',
     description: 'This is a test event to verify email functionality. If you receive this email, the system is working correctly!',

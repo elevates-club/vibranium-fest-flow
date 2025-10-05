@@ -18,7 +18,9 @@ const signUpSchema = z.object({
   lastName: z.string().trim().min(1, { message: "Last name is required" }),
   phone: z.string().trim().min(10, { message: "Phone number must be at least 10 digits" }),
   department: z.string().trim().min(1, { message: "Department is required" }),
+  departmentOther: z.string().trim().optional(),
   year: z.number().min(1).max(5, { message: "Year must be between 1-5" }),
+  yearOther: z.string().trim().optional(),
   college: z.string().trim().min(1, { message: "College name is required" }),
 });
 
@@ -47,7 +49,9 @@ const Auth = () => {
     lastName: '',
     phone: '',
     department: '',
+    departmentOther: '',
     year: 1,
+    yearOther: '',
     college: '',
   });
 
@@ -132,8 +136,9 @@ const Auth = () => {
               first_name: validatedData.firstName,
               last_name: validatedData.lastName,
               phone: validatedData.phone,
-              department: validatedData.department,
+              department: validatedData.department === 'Other' && validatedData.departmentOther ? validatedData.departmentOther : validatedData.department,
               year: validatedData.year,
+              year_text: validatedData.year === 5 && validatedData.yearOther ? validatedData.yearOther : undefined,
               college: validatedData.college,
             }
           }
@@ -413,6 +418,15 @@ const Auth = () => {
                             <SelectItem value="Other">Other</SelectItem>
                           </SelectContent>
                         </Select>
+                        {formData.department === 'Other' && (
+                          <Input
+                            name="departmentOther"
+                            value={formData.departmentOther}
+                            onChange={handleInputChange}
+                            className="mt-2 w-full h-9 sm:h-10 md:h-11 text-sm sm:text-base"
+                            placeholder="Type your department"
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -435,6 +449,15 @@ const Auth = () => {
                               <SelectItem value="5">Other</SelectItem>
                             </SelectContent>
                           </Select>
+                          {formData.year === 5 && (
+                            <Input
+                              name="yearOther"
+                              value={formData.yearOther}
+                              onChange={handleInputChange}
+                              className="mt-2 w-full h-9 sm:h-10 md:h-11 text-sm sm:text-base"
+                              placeholder="Type your year"
+                            />
+                          )}
                         </div>
                       </div>
                     </div>
