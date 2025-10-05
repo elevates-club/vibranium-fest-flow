@@ -261,15 +261,33 @@ const Events = () => {
 
   const sendRegistrationEmail = async (event: any, userData: any) => {
     try {
+      // Try to fetch participant QR/pass data
+      let qrDataURL: string | undefined;
+      let participantId: string | undefined;
+      if (user) {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('participant_id, qr_code_data')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (!profileError && profileData) {
+          const p: any = profileData as any;
+          qrDataURL = p?.qr_code_data as string | undefined;
+          participantId = p?.participant_id as string | undefined;
+        }
+      }
+
       // Call the email service API
-      const response = await fetch('http://localhost:3001/send-event-registration', {
+      const response = await fetch('/api/send-event-registration', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           eventDetails: event,
-          userDetails: userData
+          userDetails: userData,
+          qrDataURL,
+          participantId
         })
       });
 

@@ -32,6 +32,7 @@ import {
   Clock,
   CheckCircle
 } from 'lucide-react';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 const Organizer = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -49,15 +50,22 @@ const Organizer = () => {
   const [totalEvents, setTotalEvents] = useState<number>(0);
   const [totalRegistrations, setTotalRegistrations] = useState<number>(0);
   const [totalCheckins, setTotalCheckins] = useState<number>(0);
+  const [totalParticipantsOnly, setTotalParticipantsOnly] = useState<number>(0);
 
   // Department overview (real data)
   const [departmentOverview, setDepartmentOverview] = useState<{ name: string; participants: number }[]>([]);
+  // Chart state
+  const [registrationsChart, setRegistrationsChart] = useState<{ id: string; title: string; registrations: number; capacity: number; isFull: boolean }[]>([]);
+  const [chartLoading, setChartLoading] = useState(false);
   // Participants tab state
   const [participants, setParticipants] = useState<any[]>([]);
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [isParticipantDialogOpen, setIsParticipantDialogOpen] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
   const [participantEvents, setParticipantEvents] = useState<any[]>([]);
+  const [participantQuery, setParticipantQuery] = useState('');
+  const [isParticipantDetailsOpen, setIsParticipantDetailsOpen] = useState(false);
+  const [participantSort, setParticipantSort] = useState<'recent' | 'name' | 'department'>('recent');
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [funnel, setFunnel] = useState<{ views?: number; registrations: number; checkins: number }>({ registrations: 0, checkins: 0 });
   const [categoryBreakdown, setCategoryBreakdown] = useState<{ label: string; registrations: number }[]>([]);
@@ -65,6 +73,7 @@ const Organizer = () => {
   const [peakHours, setPeakHours] = useState<{ hour: string; count: number }[]>([]);
   const [capacityAlerts, setCapacityAlerts] = useState<{ id: string; title: string; ratio: number; registered: number; capacity: number }[]>([]);
   const [noShowRates, setNoShowRates] = useState<{ id: string; title: string; rate: number; registrations: number; checkins: number }[]>([]);
+  
 
   const fetchRecentEvents = useCallback(async () => {
     try {
@@ -86,23 +95,23 @@ const Organizer = () => {
               .rpc('get_event_registration_count', { event_id_param: event.id });
 
             // For check-ins, we still need to query directly since we need the checked_in field
-            const { data: checkins } = await supabase
-              .from('event_registrations')
-              .select('*')
-              .eq('event_id', event.id)
-              .eq('checked_in', true);
+          const { data: checkins } = await supabase
+            .from('event_registrations')
+            .select('*')
+            .eq('event_id', event.id)
+            .eq('checked_in', true);
 
-            return {
-              id: event.id,
+          return {
+            id: event.id,
               title: event.title || 'Untitled Event',
               registrations: registrationCount || 0,
-              checkins: checkins?.length || 0,
+            checkins: checkins?.length || 0,
               status: event.end_date 
                 ? (new Date(event.end_date) < new Date() ? 'completed' : 
                    new Date(event.start_date) <= new Date() ? 'ongoing' : 'upcoming')
                 : (new Date(event.start_date) <= new Date() ? 'ongoing' : 'upcoming'),
-              qrCustomized: false // Would need to track this in database
-            };
+            qrCustomized: false // Would need to track this in database
+          };
           } catch (error) {
             console.error('Error fetching stats for event:', event.id, error);
             return {
@@ -311,6 +320,73 @@ const Organizer = () => {
     }
   }, [activeTab, fetchAnalytics]);
 
+  // Fetch count of users with role 'participant'
+  useEffect(() => {
+    const loadParticipantsCount = async () => {
+      try {
+        // Get all user_ids that have participant role
+        const { data: partRows, error: partErr } = await (supabase as any)
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'participant');
+        if (partErr) throw partErr;
+        const participantIds: string[] = (partRows || []).map((r: any) => r.user_id);
+        // Get any user_ids that also have another role
+        const { data: otherRows, error: otherErr } = await (supabase as any)
+          .from('user_roles')
+          .select('user_id')
+          .neq('role', 'participant');
+        if (otherErr) throw otherErr;
+        const excluded = new Set((otherRows || []).map((r: any) => r.user_id));
+        const unique = Array.from(new Set(participantIds)).filter((id) => !excluded.has(id));
+        if (unique.length === 0) {
+          setTotalParticipantsOnly(0);
+          return;
+        }
+        // Count only participants that also have a profile
+        const { data: profs, error: profErr } = await (supabase as any)
+          .from('profiles')
+          .select('user_id')
+          .in('user_id', unique);
+        if (profErr) throw profErr;
+        setTotalParticipantsOnly((profs || []).length);
+      } catch (e) {
+        console.error('Error loading participants count', e);
+      }
+    };
+    void loadParticipantsCount();
+  }, []);
+
+  // Build registrations per event dataset for chart
+  useEffect(() => {
+    const buildChart = async () => {
+      try {
+        if (!events || events.length === 0) {
+          setRegistrationsChart([]);
+          return;
+        }
+        setChartLoading(true);
+        const items: { id: string; title: string; registrations: number; capacity: number; isFull: boolean }[] = [];
+        for (const ev of events) {
+          const { data: countData } = await supabase.rpc('get_event_registration_count', { event_id_param: ev.id });
+          const reg = countData || 0;
+          const capacity = ev.max_attendees || 0;
+          items.push({
+            id: ev.id,
+            title: ev.title || 'Untitled',
+            registrations: reg,
+            capacity,
+            isFull: capacity > 0 ? reg >= capacity : false,
+          });
+        }
+        setRegistrationsChart(items);
+      } finally {
+        setChartLoading(false);
+      }
+    };
+    void buildChart();
+  }, [events]);
+
   // Department overview (participants per department)
   useEffect(() => {
     const loadDept = async () => {
@@ -339,11 +415,32 @@ const Organizer = () => {
       if (activeTab !== 'participants') return;
       setParticipantsLoading(true);
       try {
-        const { data, error } = await supabase
+        // Step 1: get user_ids with role 'participant'
+        const { data: roleRows, error: roleErr } = await (supabase as any)
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'participant');
+        if (roleErr) throw roleErr;
+        const participantIds: string[] = (roleRows || []).map((r: any) => r.user_id).filter(Boolean);
+        // Exclude any user_ids that also have a non-participant role
+        const { data: otherRoleRows, error: otherErr } = await (supabase as any)
+          .from('user_roles')
+          .select('user_id')
+          .neq('role', 'participant');
+        if (otherErr) throw otherErr;
+        const excluded = new Set((otherRoleRows || []).map((r: any) => r.user_id));
+        const ids = participantIds.filter((id) => !excluded.has(id));
+        if (ids.length === 0) {
+          setParticipants([]);
+          return;
+        }
+        // Step 2: fetch profiles for those ids
+        const { data: profiles, error: profErr } = await (supabase as any)
           .from('profiles')
-          .select('user_id, first_name, last_name, email, phone, department, year, college');
-        if (error) throw error;
-        setParticipants(data || []);
+          .select('user_id, first_name, last_name, email, phone, department, year, college, created_at, participant_id')
+          .in('user_id', ids);
+        if (profErr) throw profErr;
+        setParticipants(profiles || []);
       } catch (e) {
         console.error('Error loading participants', e);
         toast({ title: 'Error', description: 'Failed to load participants.', variant: 'destructive' });
@@ -371,29 +468,24 @@ const Organizer = () => {
     }
   };
 
-  const departments = [
-    { name: "Computer Science", events: 8, participants: 234, coordinator: "Dr. Smith" },
-    { name: "Electronics", events: 6, participants: 187, coordinator: "Prof. Johnson" },
-    { name: "Mechanical", events: 5, participants: 156, coordinator: "Dr. Brown" },
-    { name: "Civil", events: 4, participants: 123, coordinator: "Prof. Davis" }
-  ];
+  const departments: any[] = [];
 
   return (
     <ErrorBoundary>
       <div className="bg-background">
-        <Navigation />
-        
+      <Navigation />
+      
         <div className="pt-16 sm:pt-20 pb-12 sm:pb-16">
           <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
-            {/* Header */}
+          {/* Header */}
             <div className="mb-6 sm:mb-8">
               <h1 className="text-2xl sm:text-3xl font-bold mb-2">
-                Organizer <span className="text-primary">Dashboard</span>
-              </h1>
+              Organizer <span className="text-primary">Dashboard</span>
+            </h1>
               <p className="text-sm sm:text-base text-muted-foreground">
                 Manage events, volunteers, and analytics for Vibranium 5.0
-              </p>
-            </div>
+            </p>
+          </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
             <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 gap-1 sm:gap-2 h-auto">
@@ -425,7 +517,10 @@ const Organizer = () => {
             <TabsContent value="participants">
               <Card>
                 <CardHeader className="p-3 sm:p-6">
-                  <CardTitle className="text-lg sm:text-xl">Participants</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl flex items-center justify-between">
+                    <span>Participants</span>
+                    <span className="text-sm text-muted-foreground">Total: {participants.length}</span>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 sm:p-6">
                   {participantsLoading ? (
@@ -434,16 +529,62 @@ const Organizer = () => {
                     <div className="text-center py-8 text-muted-foreground">No participants found</div>
                   ) : (
                     <div className="space-y-3">
-                      {participants.map((p) => (
-                        <div key={p.user_id} className="flex items-center justify-between p-3 bg-gradient-subtle rounded-lg border border-border">
-                          <div className="min-w-0">
-                            <div className="font-medium text-sm sm:text-base truncate">{(p.first_name || '') + ' ' + (p.last_name || '') || p.email}</div>
-                            <div className="text-xs sm:text-sm text-muted-foreground truncate">{p.email}</div>
-                            <div className="text-xs text-muted-foreground truncate">{p.department || 'Department not set'}</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                        <input
+                          value={participantQuery}
+                          onChange={(e) => setParticipantQuery(e.target.value)}
+                          placeholder="Search by name, email or department"
+                          className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm"
+                        />
+                        <select
+                          value={participantSort}
+                          onChange={(e) => setParticipantSort(e.target.value as any)}
+                          className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                        >
+                          <option value="recent">Recently added</option>
+                          <option value="name">Name (A–Z)</option>
+                          <option value="department">Department (A–Z)</option>
+                        </select>
+                      </div>
+                      {participants
+                        .filter((p) => {
+                          const q = participantQuery.toLowerCase().trim();
+                          if (!q) return true;
+                          const name = `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase();
+                          return (
+                            name.includes(q) ||
+                            (p.email || '').toLowerCase().includes(q) ||
+                            (p.department || '').toLowerCase().includes(q)
+                          );
+                        })
+                        .sort((a, b) => {
+                          if (participantSort === 'recent') {
+                            const ad = a.created_at ? new Date(a.created_at).getTime() : 0;
+                            const bd = b.created_at ? new Date(b.created_at).getTime() : 0;
+                            return bd - ad;
+                          }
+                          if (participantSort === 'name') {
+                            const an = `${a.first_name || ''} ${a.last_name || ''}`.trim().toLowerCase();
+                            const bn = `${b.first_name || ''} ${b.last_name || ''}`.trim().toLowerCase();
+                            return an.localeCompare(bn);
+                          }
+                          const ad = (a.department || '').toLowerCase();
+                          const bd = (b.department || '').toLowerCase();
+                          return ad.localeCompare(bd);
+                        })
+                        .map((p) => (
+                          <div key={p.user_id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-gradient-subtle rounded-lg border border-border">
+                            <div className="min-w-0">
+                              <div className="font-medium text-sm sm:text-base truncate">{(p.first_name || '') + ' ' + (p.last_name || '') || p.email}</div>
+                              <div className="text-xs sm:text-sm text-muted-foreground truncate">{p.email}</div>
+                              <div className="text-xs text-muted-foreground truncate">{p.department || 'Department not set'}</div>
+                            </div>
+                            <div className="flex items-center gap-2 sm:gap-3">
+                              <Button size="sm" variant="outline" onClick={() => { setSelectedParticipant(p); setIsParticipantDetailsOpen(true); }}>View Details</Button>
+                              <Button size="sm" variant="outline" onClick={() => openParticipant(p)}>View Events</Button>
+                            </div>
                           </div>
-                          <Button size="sm" variant="outline" onClick={() => openParticipant(p)}>View Events</Button>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   )}
                 </CardContent>
@@ -477,12 +618,49 @@ const Organizer = () => {
                   </Card>
                   <Card className="bg-gradient-card border-border">
                     <CardContent className="p-3 sm:p-4 text-center">
-                      <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6 text-primary mx-auto mb-1 sm:mb-2" />
-                      <div className="text-lg sm:text-2xl font-bold text-foreground">—</div>
-                      <div className="text-xs sm:text-sm text-muted-foreground">Avg Rating</div>
+                      <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary mx-auto mb-1 sm:mb-2" />
+                      <div className="text-lg sm:text-2xl font-bold text-foreground">{totalParticipantsOnly}</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">Participants</div>
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* Registrations by Event */}
+                <Card>
+                  <CardHeader className="p-3 sm:p-6">
+                    <CardTitle className="text-lg sm:text-xl">Registrations by Event</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3 sm:p-6">
+                    {chartLoading ? (
+                      <div className="text-center py-6 text-muted-foreground">Loading chart...</div>
+                    ) : registrationsChart.length === 0 ? (
+                      <div className="text-center py-6 text-muted-foreground">No events to display</div>
+                    ) : (
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-center">
+                        <div className="col-span-1 lg:col-span-2 h-[260px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Tooltip />
+                              <Pie data={registrationsChart} dataKey="registrations" nameKey="title" innerRadius={50} outerRadius={100} paddingAngle={2}>
+                                {registrationsChart.map((entry, index) => (
+                                  <Cell key={`cell-${entry.id}`} fill={["#8b5cf6", "#06b6d4", "#22c55e", "#f59e0b", "#ef4444", "#14b8a6", "#a78bfa"][index % 7]} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="space-y-2">
+                          {registrationsChart.map((e) => (
+                            <div key={e.id} className="flex items-center justify-between text-sm">
+                              <span className="truncate pr-2">{e.title}</span>
+                              <span className="text-muted-foreground">{e.registrations}{e.capacity ? ` / ${e.capacity}` : ''}{e.isFull ? ' • Full' : ''}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
                 {/* Recent Events */}
                 <Card>
@@ -544,9 +722,9 @@ const Organizer = () => {
                               <div className="font-semibold text-foreground text-sm sm:text-base truncate">{dept.name}</div>
                             </div>
                             <div className="flex items-center justify-between sm:justify-end space-x-6 text-xs sm:text-sm">
-                              <div className="text-center">
+                            <div className="text-center">
                                 <div className="font-bold text-secondary text-sm sm:text-base">{dept.participants}</div>
-                                <div className="text-muted-foreground">Participants</div>
+                              <div className="text-muted-foreground">Participants</div>
                               </div>
                             </div>
                           </div>
@@ -628,13 +806,13 @@ const Organizer = () => {
             <TabsContent value="analytics">
               <div className="space-y-4">
                 {/* Funnel */}
-                <Card>
+              <Card>
                   <CardHeader className="p-3 sm:p-6">
                     <CardTitle className="flex items-center text-lg sm:text-xl">
-                      <BarChart3 className="w-5 h-5 mr-2" />
+                    <BarChart3 className="w-5 h-5 mr-2" />
                       Event Funnel
-                    </CardTitle>
-                  </CardHeader>
+                  </CardTitle>
+                </CardHeader>
                   <CardContent className="p-3 sm:p-6">
                     {analyticsLoading ? (
                       <div className="text-center py-6 text-muted-foreground">Loading analytics...</div>
@@ -758,15 +936,15 @@ const Organizer = () => {
 {n.checkins}/{n.registrations} checked-in)</span>
                           </div>
                         ))}
-                      </div>
+                  </div>
                     )}
-                  </CardContent>
-                </Card>
+                </CardContent>
+              </Card>
               </div>
             </TabsContent>
           </Tabs>
-          </div>
         </div>
+      </div>
 
       {/* Registered Members Dialog */}
       <Dialog open={isRegisteredMembersDialogOpen} onOpenChange={setIsRegisteredMembersDialogOpen}>
@@ -897,7 +1075,58 @@ const Organizer = () => {
           </div>
         </DialogContent>
       </Dialog>
-      </div>
+
+      {/* Participant Details Dialog */}
+      <Dialog open={isParticipantDetailsOpen} onOpenChange={setIsParticipantDetailsOpen}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Participant Details</DialogTitle>
+            <DialogDescription>Profile information</DialogDescription>
+          </DialogHeader>
+          {selectedParticipant ? (
+            <div className="space-y-2 text-sm">
+              <div>
+                <span className="text-muted-foreground">Name:</span>
+                <span className="ml-2 font-medium">{(selectedParticipant.first_name || '') + ' ' + (selectedParticipant.last_name || '')}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Email:</span>
+                <span className="ml-2 font-medium break-all">{selectedParticipant.email}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Phone:</span>
+                <span className="ml-2 font-medium">{selectedParticipant.phone || '—'}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Department:</span>
+                <span className="ml-2 font-medium">{selectedParticipant.department || '—'}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Year:</span>
+                <span className="ml-2 font-medium">{selectedParticipant.year || '—'}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">College:</span>
+                <span className="ml-2 font-medium">{selectedParticipant.college || '—'}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Participant ID:</span>
+                <span className="ml-2 font-medium">{selectedParticipant.participant_id || '—'}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Registered At:</span>
+                <span className="ml-2 font-medium">{selectedParticipant.created_at ? new Date(selectedParticipant.created_at).toLocaleString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true, year: 'numeric', month: 'short', day: '2-digit' }) : '—'}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-muted-foreground">No participant selected</div>
+          )}
+          <div className="flex justify-end pt-3 border-t">
+            <Button variant="outline" onClick={() => setIsParticipantDetailsOpen(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
     </ErrorBoundary>
   );
 };

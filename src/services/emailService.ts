@@ -9,7 +9,7 @@ const emailConfig = {
   secure: false, // true for 465, false for other ports
   auth: {
     user: process.env.EMAIL_USER || 'elevates@ekc.edu.in',
-    pass: process.env.EMAIL_PASS || '', // Use App Password for Gmail
+    pass: process.env.EMAIL_PASS || 'jayd okdu vipl enki', // Use App Password for Gmail
   },
 };
 
@@ -18,7 +18,7 @@ const transporter = nodemailer.createTransport(emailConfig);
 
 // Email templates
 export const emailTemplates = {
-  eventRegistration: (eventDetails: any, userDetails: any) => ({
+  eventRegistration: (eventDetails: any, userDetails: any, opts?: { participantId?: string }) => ({
     subject: `🎉 Registration Confirmed: ${eventDetails.title}`,
     html: `
       <!DOCTYPE html>
@@ -184,6 +184,14 @@ export const emailTemplates = {
             <p style="line-height: 1.6;">${eventDetails.description}</p>
           </div>
 
+          ${opts?.participantId ? `
+          <div class="event-card" style="text-align:center;">
+            <h3 style="color: #ffd700; margin-bottom: 15px;">🎟️ Your Digital Pass</h3>
+            <p style="margin-bottom:8px;">Participant ID: <strong>${opts.participantId}</strong></p>
+            <img src="cid:qrcode" alt="Your QR Code" style="width:180px;height:180px;border-radius:8px;background:#fff;padding:8px;" />
+          </div>
+          ` : ''}
+
           <div class="event-card">
             <h3 style="color: #ffd700; margin-bottom: 15px;">📋 Important Information</h3>
             <ul style="padding-left: 20px;">
@@ -247,17 +255,30 @@ export const emailTemplates = {
 // Email service functions
 export const emailService = {
   // Send event registration confirmation email
-  sendEventRegistrationEmail: async (eventDetails: any, userDetails: any) => {
+  sendEventRegistrationEmail: async (
+    eventDetails: any,
+    userDetails: any,
+    options?: { qrDataURL?: string; participantId?: string }
+  ) => {
     try {
-      const template = emailTemplates.eventRegistration(eventDetails, userDetails);
+      const template = emailTemplates.eventRegistration(eventDetails, userDetails, { participantId: options?.participantId });
       
-      const mailOptions = {
+      const mailOptions: any = {
         from: `"Vibranium 5.0" <${emailConfig.auth.user}>`,
         to: userDetails.email,
         subject: template.subject,
         html: template.html,
         text: template.text,
       };
+
+      if (options?.qrDataURL) {
+        mailOptions.attachments = [{
+          filename: 'vibranium-pass.png',
+          content: options.qrDataURL.split(',')[1],
+          encoding: 'base64',
+          cid: 'qrcode'
+        }];
+      }
 
       const result = await transporter.sendMail(mailOptions);
       console.log('Event registration email sent:', result.messageId);

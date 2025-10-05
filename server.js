@@ -34,7 +34,7 @@ app.get('/test-email', async (req, res) => {
 // Send event registration email
 app.post('/send-event-registration', async (req, res) => {
   try {
-    const { eventDetails, userDetails } = req.body;
+    const { eventDetails, userDetails, qrDataURL, participantId } = req.body;
 
     // Validate required fields
     if (!eventDetails || !userDetails) {
@@ -75,7 +75,8 @@ app.post('/send-event-registration', async (req, res) => {
     // Send email
     const result = await emailService.sendEventRegistrationEmail(
       formattedEventDetails,
-      formattedUserDetails
+      formattedUserDetails,
+      { qrDataURL, participantId }
     );
 
     if (result.success) {
