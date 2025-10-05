@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Plus, Calendar, MapPin, Users, DollarSign, Star, Edit, Trash2, Lock, Unlock, Eye, Mail, Phone, GraduationCap, Clock, CheckCircle, Maximize2, Minimize2, Eye as EyeIcon } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useEvents } from '@/hooks/useEvents';
+import { formatDateDMY } from '@/lib/utils';
 
 export default function EventCreation() {
   const { user } = useAuth();
@@ -107,6 +108,16 @@ export default function EventCreation() {
     registration_closed: false
   });
 
+  // Convert stored ISO (UTC) to a datetime-local input value in user's local time
+  const toLocalInput = (dateStr: string) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const tzOffset = d.getTimezoneOffset(); // minutes
+    const local = new Date(d.getTime() - tzOffset * 60000);
+    return local.toISOString().slice(0, 16);
+  };
+
   // Draft autosave and beforeunload prompt removed per request
 
   // Fetch registration counts for all events
@@ -152,8 +163,13 @@ export default function EventCreation() {
           description: formData.description,
           category: formData.category,
           location: formData.location,
-          start_date: new Date(formData.start_date).toISOString(), // Convert to ISO string for proper timezone handling
-          end_date: formData.end_date ? new Date(formData.end_date).toISOString() : new Date(formData.start_date).toISOString(), // Convert to ISO string
+          // Convert local datetime-local input to UTC ISO by reversing offset
+          start_date: (() => { const d = new Date(formData.start_date); return isNaN(d.getTime()) ? null : d.toISOString(); })(),
+          end_date: (() => {
+            if (!formData.end_date) return formData.start_date ? new Date(formData.start_date).toISOString() : null;
+            const d = new Date(formData.end_date);
+            return isNaN(d.getTime()) ? null : d.toISOString();
+          })(),
           max_attendees: formData.max_attendees,
           registration_fee: formData.registration_fee,
           points_reward: formData.points_reward || 0, // Default to 0 if not provided
@@ -191,8 +207,12 @@ export default function EventCreation() {
           description: formData.description,
           category: formData.category,
           location: formData.location,
-          start_date: new Date(formData.start_date).toISOString(), // Convert to ISO string for proper timezone handling
-          end_date: formData.end_date ? new Date(formData.end_date).toISOString() : new Date(formData.start_date).toISOString(), // Convert to ISO string
+          start_date: (() => { const d = new Date(formData.start_date); return isNaN(d.getTime()) ? null : d.toISOString(); })(),
+          end_date: (() => {
+            if (!formData.end_date) return formData.start_date ? new Date(formData.start_date).toISOString() : null;
+            const d = new Date(formData.end_date);
+            return isNaN(d.getTime()) ? null : d.toISOString();
+          })(),
           max_attendees: formData.max_attendees,
           registration_fee: formData.registration_fee,
           points_reward: formData.points_reward || 0, // Default to 0 if not provided
@@ -323,8 +343,8 @@ export default function EventCreation() {
       description: event.description,
       category: event.category,
       location: event.location,
-      start_date: event.start_date ? new Date(event.start_date).toISOString().slice(0, 16) : '',
-      end_date: event.end_date ? new Date(event.end_date).toISOString().slice(0, 16) : '',
+      start_date: event.start_date ? toLocalInput(event.start_date) : '',
+      end_date: event.end_date ? toLocalInput(event.end_date) : '',
       max_attendees: event.max_attendees,
       registration_fee: event.registration_fee,
       points_reward: event.points_reward,
@@ -778,7 +798,7 @@ export default function EventCreation() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                            <span className="truncate">{new Date(event.start_date).toLocaleDateString()}</span>
+                            <span className="truncate">{formatDateDMY(event.start_date)}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />

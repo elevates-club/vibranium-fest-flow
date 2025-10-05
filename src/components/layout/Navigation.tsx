@@ -13,6 +13,8 @@ import {
   UserPlus,
   LogOut 
 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -106,13 +108,39 @@ const Navigation = () => {
           <div className="hidden md:flex items-center space-x-3 lg:space-x-4">
             {user ? (
               <>
-                <span className="text-xs lg:text-sm text-muted-foreground hidden lg:inline">
-                  Welcome back!
-                </span>
-                <Button variant="ghost" size="sm" onClick={handleLogout}>
-                  <LogOut className="w-4 h-4 mr-1 lg:mr-2" />
-                  <span className="hidden lg:inline">Logout</span>
-                </Button>
+                <span className="text-sm text-muted-foreground hidden md:inline">Hi, {(user.user_metadata?.first_name && user.user_metadata?.last_name) ? `${user.user_metadata.first_name}` : (user.email?.split('@')[0] || 'User')}</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="rounded-full overflow-hidden ring-1 ring-border/50 hover:ring-primary/40 transition focus:outline-none">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.user_metadata?.avatar_url || ''} alt="avatar" />
+                        <AvatarFallback className="bg-primary/20 text-primary">
+                          {((user.email || 'U').charAt(0) || 'U').toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 bg-background/95 backdrop-blur-md border-border/60">
+                    <DropdownMenuLabel className="flex items-center gap-3 py-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.user_metadata?.avatar_url || ''} alt="avatar" />
+                        <AvatarFallback className="bg-primary/20 text-primary">
+                          {((user.email || 'U').charAt(0) || 'U').toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="truncate text-sm">
+                        {user.email?.split('@')[0] || 'Profile'}
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/account')} className="cursor-pointer">
+                      <User className="w-4 h-4 mr-2" /> Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                      <LogOut className="w-4 h-4 mr-2" /> Log out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             ) : (
               <>
@@ -167,17 +195,34 @@ const Navigation = () => {
             })}
             <div className="pt-3 px-2 space-y-2 border-t border-border mt-3">
               {user ? (
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start h-12 text-base"
-                  onClick={() => {
-                    handleLogout();
-                    setIsOpen(false);
-                  }}
-                >
-                  <LogOut className="w-5 h-5 mr-3" />
-                  Logout
-                </Button>
+                <>
+                  <div className="flex items-center gap-3 px-2 text-sm text-muted-foreground">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user.user_metadata?.avatar_url || ''} alt="avatar" />
+                      <AvatarFallback className="bg-primary/20 text-primary">
+                        {((user.email || 'U').charAt(0) || 'U').toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="truncate">Hi, {user.email?.split('@')[0] || 'User'}</div>
+                  </div>
+                  <Link to="/account" onClick={() => setIsOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start h-12 text-base">
+                      <User className="w-5 h-5 mr-3" />
+                      Profile
+                    </Button>
+                  </Link>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-start h-12 text-base"
+                    onClick={() => {
+                      handleLogout();
+                      setIsOpen(false);
+                    }}
+                  >
+                    <LogOut className="w-5 h-5 mr-3" />
+                    Log out
+                  </Button>
+                </>
               ) : (
                 <>
                   <Link to="/auth" onClick={() => setIsOpen(false)}>
@@ -193,6 +238,14 @@ const Navigation = () => {
                     </Button>
                   </Link>
                 </>
+              )}
+              {user && (
+                <Link to="/account" onClick={() => setIsOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start h-12 text-base">
+                    <User className="w-5 h-5 mr-3" />
+                    Account
+                  </Button>
+                </Link>
               )}
             </div>
           </div>

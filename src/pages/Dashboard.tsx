@@ -19,6 +19,7 @@ import {
   ClipboardList,
   Ticket
 } from 'lucide-react';
+import { formatDateDMY } from '@/lib/utils';
 
 const Dashboard = () => {
   const { user, userRoles } = useAuth();
@@ -115,7 +116,7 @@ const Dashboard = () => {
 
     return {
       title: event.title,
-      date: startDate.toLocaleDateString(),
+      date: formatDateDMY(startDate),
       time: timeString,
       status,
       location: event.location
