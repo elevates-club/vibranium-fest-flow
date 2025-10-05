@@ -34,13 +34,7 @@ import {
 } from 'lucide-react';
 
 const Organizer = () => {
-  const [activeTab, setActiveTab] = useState(() => {
-    try {
-      return localStorage.getItem('org_active_tab') || 'overview';
-    } catch {
-      return 'overview';
-    }
-  });
+  const [activeTab, setActiveTab] = useState('overview');
   const [recentEvents, setRecentEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRegisteredMembersDialogOpen, setIsRegisteredMembersDialogOpen] = useState(false);
@@ -61,7 +55,8 @@ const Organizer = () => {
 
   const fetchRecentEvents = useCallback(async () => {
     try {
-      setLoading(true);
+      // Avoid jarring page-level loading if we already have something to show
+      if (recentEvents.length === 0) setLoading(true);
       
       // Check if events array exists and is not empty
       if (!events || events.length === 0) {
@@ -127,25 +122,7 @@ const Organizer = () => {
     fetchRecentEvents();
   }, [fetchRecentEvents]);
 
-  // Persist active tab to avoid UI resetting on remount/focus changes
-  useEffect(() => {
-    try { localStorage.setItem('org_active_tab', activeTab); } catch {}
-  }, [activeTab]);
-
-  // Avoid refetch bursts when tab/window visibility changes rapidly
-  const lastFetchRef = React.useRef<number>(0);
-  useEffect(() => {
-    const onVisibility = () => {
-      if (document.hidden) return;
-      const now = Date.now();
-      if (now - lastFetchRef.current > 30000) { // 30s throttle
-        lastFetchRef.current = now;
-        fetchRecentEvents();
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => document.removeEventListener('visibilitychange', onVisibility);
-  }, [activeTab, fetchRecentEvents]);
+  // Removed tab persistence and visibility throttling per request
 
   // After analytics function is defined, a later effect will preload it
 
@@ -338,15 +315,7 @@ const Organizer = () => {
               </p>
             </div>
 
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-muted-foreground">Loading organizer dashboard...</p>
-                </div>
-              </div>
-            ) : (
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
             <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1 sm:gap-2 h-auto">
               <TabsTrigger value="overview" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
                 <span className="hidden sm:inline">Overview</span>
@@ -686,7 +655,6 @@ const Organizer = () => {
               </div>
             </TabsContent>
           </Tabs>
-            )}
           </div>
         </div>
 

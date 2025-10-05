@@ -107,38 +107,7 @@ export default function EventCreation() {
     registration_closed: false
   });
 
-  // Persist draft locally to avoid losing data if the page reloads or tab switches
-  useEffect(() => {
-    const draftKey = 'event_creation_draft_v1';
-    try {
-      const saved = localStorage.getItem(draftKey);
-      if (!isEditMode && saved) {
-        const parsed = JSON.parse(saved);
-        // Only hydrate if dialog is about to open and fields are empty
-        setFormData((prev) => ({ ...prev, ...parsed }));
-      }
-    } catch {}
-
-    const interval = setInterval(() => {
-      try {
-        localStorage.setItem(draftKey, JSON.stringify(formData));
-      } catch {}
-    }, 1000);
-
-    // Warn before unload if there are unsaved changes and dialog is open
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDialogOpen) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [formData, isDialogOpen, isEditMode]);
+  // Draft autosave and beforeunload prompt removed per request
 
   // Fetch registration counts for all events
   useEffect(() => {
