@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 
 const Organizer = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('overview');
   const [recentEvents, setRecentEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRegisteredMembersDialogOpen, setIsRegisteredMembersDialogOpen] = useState(false);
@@ -320,9 +320,9 @@ const Organizer = () => {
             ) : (
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
             <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1 sm:gap-2 h-auto">
-              <TabsTrigger value="dashboard" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
-                <span className="hidden sm:inline">Dashboard</span>
-                <span className="sm:hidden">Dash</span>
+              <TabsTrigger value="overview" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
+                <span className="hidden sm:inline">Overview</span>
+                <span className="sm:hidden">Overview</span>
               </TabsTrigger>
               <TabsTrigger value="events" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
                 <span className="hidden sm:inline">Events</span>
@@ -342,7 +342,7 @@ const Organizer = () => {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="dashboard">
+            <TabsContent value="overview">
               <div className="space-y-4 sm:space-y-6">
                 {/* Quick Stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
