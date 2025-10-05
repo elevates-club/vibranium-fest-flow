@@ -44,6 +44,15 @@ const Organizer = () => {
   const { events } = useEvents();
   const { toast } = useToast();
 
+  // Analytics state
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [funnel, setFunnel] = useState<{ views?: number; registrations: number; checkins: number }>({ registrations: 0, checkins: 0 });
+  const [categoryBreakdown, setCategoryBreakdown] = useState<{ label: string; registrations: number }[]>([]);
+  const [departmentBreakdown, setDepartmentBreakdown] = useState<{ label: string; registrations: number }[]>([]);
+  const [peakHours, setPeakHours] = useState<{ hour: string; count: number }[]>([]);
+  const [capacityAlerts, setCapacityAlerts] = useState<{ id: string; title: string; ratio: number; registered: number; capacity: number }[]>([]);
+  const [noShowRates, setNoShowRates] = useState<{ id: string; title: string; rate: number; registrations: number; checkins: number }[]>([]);
+
   const fetchRecentEvents = useCallback(async () => {
     try {
       setLoading(true);
@@ -111,6 +120,13 @@ const Organizer = () => {
   useEffect(() => {
     fetchRecentEvents();
   }, [fetchRecentEvents]);
+
+  useEffect(() => {
+    // Preload analytics when tab switches to analytics
+    if (activeTab === 'analytics') {
+      void fetchAnalytics();
+    }
+  }, [activeTab]);
 
   const fetchRegisteredMembers = async (eventId: string) => {
     setMembersLoading(true);
@@ -181,6 +197,94 @@ const Organizer = () => {
     setIsRegisteredMembersDialogOpen(true);
     fetchRegisteredMembers(event.id);
   };
+
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      setAnalyticsLoading(true);
+
+      // Fetch all registrations for current events
+      const { data: registrations, error: regErr } = await supabase
+        .from('event_registrations')
+        .select('event_id, registration_date, checked_in');
+      if (regErr) throw regErr;
+
+      // Build event map
+      const eventMap = new Map<string, any>();
+      (events || []).forEach(e => eventMap.set(e.id, e));
+
+      // Funnel (include views)
+      const totalRegistrations = registrations?.length || 0;
+      const totalCheckins = registrations?.filter(r => r.checked_in)?.length || 0;
+      // Query event views count
+      const { count: viewsCount, error: viewsErr } = await (supabase as any)
+        .from('event_views')
+        .select('*', { count: 'exact', head: true });
+      if (viewsErr) setFunnel({ registrations: totalRegistrations, checkins: totalCheckins });
+      else setFunnel({ views: viewsCount || 0, registrations: totalRegistrations, checkins: totalCheckins });
+
+      // Category breakdown
+      const catCount = new Map<string, number>();
+      registrations?.forEach(r => {
+        const ev = eventMap.get(r.event_id);
+        const key = ev?.category || 'Uncategorized';
+        catCount.set(key, (catCount.get(key) || 0) + 1);
+      });
+      setCategoryBreakdown(Array.from(catCount.entries()).map(([label, registrations]) => ({ label, registrations })));
+
+      // Department breakdown
+      const deptCount = new Map<string, number>();
+      registrations?.forEach(r => {
+        const ev = eventMap.get(r.event_id);
+        const key = ev?.department || 'All Departments';
+        deptCount.set(key, (deptCount.get(key) || 0) + 1);
+      });
+      setDepartmentBreakdown(Array.from(deptCount.entries()).map(([label, registrations]) => ({ label, registrations })));
+
+      // Peak registration hours (local time hour)
+      const hourCount = new Map<string, number>();
+      registrations?.forEach(r => {
+        const d = new Date(r.registration_date);
+        const hour = d.toLocaleTimeString([], { hour: '2-digit', hour12: true });
+        hourCount.set(hour, (hourCount.get(hour) || 0) + 1);
+      });
+      const peak = Array.from(hourCount.entries()).map(([hour, count]) => ({ hour, count }))
+        .sort((a, b) => b.count - a.count).slice(0, 6);
+      setPeakHours(peak);
+
+      // Capacity alerts (>= 80%)
+      const alerts: { id: string; title: string; ratio: number; registered: number; capacity: number }[] = [];
+      const regPerEvent = new Map<string, number>();
+      registrations?.forEach(r => regPerEvent.set(r.event_id, (regPerEvent.get(r.event_id) || 0) + 1));
+      (events || []).forEach(ev => {
+        const reg = regPerEvent.get(ev.id) || 0;
+        const capacity = ev.max_attendees || 0;
+        if (capacity > 0) {
+          const ratio = reg / capacity;
+          if (ratio >= 0.8) alerts.push({ id: ev.id, title: ev.title || 'Untitled Event', ratio, registered: reg, capacity });
+        }
+      });
+      setCapacityAlerts(alerts.sort((a, b) => b.ratio - a.ratio));
+
+      // No-show rate for completed events
+      const noShows: { id: string; title: string; rate: number; registrations: number; checkins: number }[] = [];
+      (events || []).forEach(ev => {
+        const isCompleted = ev.end_date ? new Date(ev.end_date) < new Date() : new Date(ev.start_date) < new Date();
+        if (!isCompleted) return;
+        const reg = regPerEvent.get(ev.id) || 0;
+        const checked = registrations?.filter(r => r.event_id === ev.id && r.checked_in)?.length || 0;
+        if (reg > 0) {
+          const rate = Math.max(0, (reg - checked) / reg);
+          noShows.push({ id: ev.id, title: ev.title || 'Untitled Event', rate, registrations: reg, checkins: checked });
+        }
+      });
+      setNoShowRates(noShows.sort((a, b) => b.rate - a.rate).slice(0, 10));
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      toast({ title: 'Error', description: 'Failed to load analytics.', variant: 'destructive' });
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [events, toast]);
 
   const departments = [
     { name: "Computer Science", events: 8, participants: 234, coordinator: "Dr. Smith" },
@@ -415,19 +519,143 @@ const Organizer = () => {
             </TabsContent>
 
             <TabsContent value="analytics">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <BarChart3 className="w-5 h-5 mr-2" />
-                    Analytics & Reports
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12 text-muted-foreground">
-                    Detailed analytics dashboard will be available here
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-4">
+                {/* Funnel */}
+                <Card>
+                  <CardHeader className="p-3 sm:p-6">
+                    <CardTitle className="flex items-center text-lg sm:text-xl">
+                      <BarChart3 className="w-5 h-5 mr-2" />
+                      Event Funnel
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3 sm:p-6">
+                    {analyticsLoading ? (
+                      <div className="text-center py-6 text-muted-foreground">Loading analytics...</div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="p-4 rounded-lg bg-gradient-subtle border border-border">
+                          <div className="text-xs text-muted-foreground mb-1">Views</div>
+                          <div className="text-2xl font-bold">{funnel.views ?? '—'}</div>
+                        </div>
+                        <div className="p-4 rounded-lg bg-gradient-subtle border border-border">
+                          <div className="text-xs text-muted-foreground mb-1">Registrations</div>
+                          <div className="text-2xl font-bold">{funnel.registrations}</div>
+                        </div>
+                        <div className="p-4 rounded-lg bg-gradient-subtle border border-border">
+                          <div className="text-xs text-muted-foreground mb-1">Check-ins</div>
+                          <div className="text-2xl font-bold">{funnel.checkins}</div>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Breakdowns */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="p-3 sm:p-6">
+                      <CardTitle className="text-lg sm:text-xl">By Category</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 sm:p-6">
+                      {categoryBreakdown.length === 0 ? (
+                        <div className="text-center py-6 text-muted-foreground">No data</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {categoryBreakdown.map((c) => (
+                            <div key={c.label} className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">{c.label}</span>
+                              <span className="font-medium">{c.registrations}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="p-3 sm:p-6">
+                      <CardTitle className="text-lg sm:text-xl">By Department</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 sm:p-6">
+                      {departmentBreakdown.length === 0 ? (
+                        <div className="text-center py-6 text-muted-foreground">No data</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {departmentBreakdown.map((d) => (
+                            <div key={d.label} className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">{d.label}</span>
+                              <span className="font-medium">{d.registrations}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Peak hours and capacity alerts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="p-3 sm:p-6">
+                      <CardTitle className="text-lg sm:text-xl">Peak Registration Times</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 sm:p-6">
+                      {peakHours.length === 0 ? (
+                        <div className="text-center py-6 text-muted-foreground">No data</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {peakHours.map(h => (
+                            <div key={h.hour} className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">{h.hour}</span>
+                              <span className="font-medium">{h.count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="p-3 sm:p-6">
+                      <CardTitle className="text-lg sm:text-xl">Capacity Alerts (≥ 80%)</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 sm:p-6">
+                      {capacityAlerts.length === 0 ? (
+                        <div className="text-center py-6 text-muted-foreground">No events near capacity</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {capacityAlerts.map(a => (
+                            <div key={a.id} className="flex items-center justify-between text-sm">
+                              <span className="truncate pr-2">{a.title}</span>
+                              <span className="font-medium">{a.registered}/{a.capacity} ({Math.round(a.ratio*100)}%)</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* No-show rates */}
+                <Card>
+                  <CardHeader className="p-3 sm:p-6">
+                    <CardTitle className="text-lg sm:text-xl">Top No-show Rates (Completed Events)</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3 sm:p-6">
+                    {noShowRates.length === 0 ? (
+                      <div className="text-center py-6 text-muted-foreground">No completed events with registrations</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {noShowRates.map(n => (
+                          <div key={n.id} className="flex items-center justify-between text-sm">
+                            <span className="truncate pr-2">{n.title}</span>
+                            <span className="font-medium">{Math.round(n.rate*100)}% (\
+{n.checkins}/{n.registrations} checked-in)</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </Tabs>
             )}

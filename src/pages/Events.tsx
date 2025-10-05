@@ -38,6 +38,21 @@ const Events = () => {
   });
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  // Simple session id persisted in localStorage for anonymous view attribution
+  const getSessionId = () => {
+    try {
+      const key = 'vf_session_id';
+      let sid = localStorage.getItem(key);
+      if (!sid) {
+        sid = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        localStorage.setItem(key, sid);
+      }
+      return sid;
+    } catch {
+      return undefined;
+    }
+  };
 
   useEffect(() => {
     fetchEvents();
@@ -96,6 +111,9 @@ const Events = () => {
       
       console.log('Processed events:', processedEvents);
       setEvents(processedEvents);
+
+      // Log views for visible events with per-day throttle
+      await logEventViews(processedEvents);
     } catch (error) {
       console.error('Error fetching events:', error);
       toast({
@@ -105,6 +123,43 @@ const Events = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Log event views once per day per session to Supabase table: event_views(event_id, viewed_at, user_id, session_id)
+  const logEventViews = async (eventList: any[]) => {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const storageKey = 'vf_event_viewed_dates';
+      const viewedMap = JSON.parse(localStorage.getItem(storageKey) || '{}');
+      const sessionId = getSessionId();
+
+      const rows = eventList
+        .filter((e) => {
+          const last = viewedMap[e.id];
+          return last !== today; // not yet logged today
+        })
+        .map((e) => ({
+          event_id: e.id,
+          viewed_at: new Date().toISOString(),
+          user_id: user?.id || null,
+          session_id: sessionId || null,
+        }));
+
+      if (rows.length === 0) return;
+
+      const { error } = await (supabase as any).from('event_views').insert(rows);
+      if (!error) {
+        // update throttle map
+        rows.forEach((r) => {
+          viewedMap[r.event_id] = today;
+        });
+        localStorage.setItem(storageKey, JSON.stringify(viewedMap));
+      } else {
+        console.warn('View logging failed:', error.message);
+      }
+    } catch (err) {
+      console.warn('View logging error:', err);
     }
   };
 
