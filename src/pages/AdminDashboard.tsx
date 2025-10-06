@@ -17,6 +17,10 @@ export default function AdminDashboard() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [userRolesMap, setUserRolesMap] = useState<Record<string, string[]>>({});
   const [roleUpdating, setRoleUpdating] = useState<string | null>(null);
+  const [rolesSearch, setRolesSearch] = useState('');
+  const [rolesSort, setRolesSort] = useState<'recent' | 'name' | 'email'>('recent');
+  const [isUserDetailsOpen, setIsUserDetailsOpen] = useState(false);
+  const [detailsUser, setDetailsUser] = useState<any | null>(null);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [roleUser, setRoleUser] = useState<any | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<('participant' | 'organizer' | 'volunteer' | 'staff' | 'coordinator' | 'admin')[]>([]);
@@ -343,6 +347,25 @@ export default function AdminDashboard() {
 
                     <p className="text-sm text-muted-foreground">Click any row below to add/remove roles.</p>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <input
+                        className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                        placeholder="Search by name or email"
+                        value={rolesSearch}
+                        onChange={(e) => setRolesSearch(e.target.value)}
+                      />
+                      <select
+                        className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                        value={rolesSort}
+                        onChange={(e) => setRolesSort(e.target.value as any)}
+                      >
+                        <option value="recent">Recently added</option>
+                        <option value="name">Name (A–Z)</option>
+                        <option value="email">Email (A–Z)</option>
+                      </select>
+                      <div className="hidden sm:block" />
+                    </div>
+
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
@@ -353,7 +376,25 @@ export default function AdminDashboard() {
                           </tr>
                         </thead>
                         <tbody>
-                          {usersList.map((u) => (
+                          {usersList
+                            .filter((u) => {
+                              const q = rolesSearch.toLowerCase().trim();
+                              if (!q) return true;
+                              const name = `${u.first_name || ''} ${u.last_name || ''}`.toLowerCase();
+                              return name.includes(q) || (u.email || '').toLowerCase().includes(q);
+                            })
+                            .sort((a, b) => {
+                              if (rolesSort === 'name') {
+                                const an = `${a.first_name || ''} ${a.last_name || ''}`.trim().toLowerCase();
+                                const bn = `${b.first_name || ''} ${b.last_name || ''}`.trim().toLowerCase();
+                                return an.localeCompare(bn);
+                              }
+                              if (rolesSort === 'email') {
+                                return (a.email || '').localeCompare(b.email || '');
+                              }
+                              return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+                            })
+                            .map((u) => (
                             <tr key={u.user_id} className="border-t border-border/50 hover:bg-muted/30 cursor-pointer" onClick={() => openRolesDialog(u)}>
                               <td className="py-2 pr-4">{(u.first_name || '') + ' ' + (u.last_name || '') || u.email}</td>
                               <td className="py-2 pr-4">
@@ -361,6 +402,7 @@ export default function AdminDashboard() {
                               </td>
                               <td className="py-2 pr-4 text-muted-foreground">
                                 <div className="flex items-center gap-2">
+                                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); setDetailsUser(u); setIsUserDetailsOpen(true); }}>View Details</Button>
                                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); openRolesDialog(u); }}>Manage</Button>
                                   <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" disabled={(userRolesMap[u.user_id] || []).includes('admin')} onClick={(e) => { e.stopPropagation(); if ((userRolesMap[u.user_id] || []).includes('admin')) { toast({ title: 'Not allowed', description: 'Admin users cannot be deleted.', variant: 'destructive' }); return; } setDeleteTarget(u); setIsDeleteDialogOpen(true); }}>
                                     <Trash2 className="w-4 h-4 mr-1" /> Delete
@@ -497,6 +539,26 @@ export default function AdminDashboard() {
           </Tabs>
         </div>
       </div>
+
+      {/* Roles dialog */}
+      <Dialog open={isUserDetailsOpen} onOpenChange={setIsUserDetailsOpen}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>User Details</DialogTitle>
+            <DialogDescription>Profile information</DialogDescription>
+          </DialogHeader>
+          {detailsUser && (
+            <div className="space-y-2 text-sm">
+              <div><span className="text-muted-foreground">Name:</span> <span className="font-medium">{`${detailsUser.first_name || ''} ${detailsUser.last_name || ''}`.trim() || '—'}</span></div>
+              <div><span className="text-muted-foreground">Email:</span> <span className="font-medium break-all">{detailsUser.email || '—'}</span></div>
+              <div><span className="text-muted-foreground">Department:</span> <span className="font-medium">{detailsUser.department || '—'}</span></div>
+              <div><span className="text-muted-foreground">Year:</span> <span className="font-medium">{detailsUser.year || '—'}</span></div>
+              <div><span className="text-muted-foreground">Joined:</span> <span className="font-medium">{detailsUser.created_at ? new Date(detailsUser.created_at).toLocaleString() : '—'}</span></div>
+              <div><span className="text-muted-foreground">Roles:</span> <span className="font-medium">{(userRolesMap[detailsUser.user_id] || ['participant']).join(', ')}</span></div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Roles dialog */}
       <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>

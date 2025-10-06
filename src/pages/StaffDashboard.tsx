@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import EventCreation from '@/components/organizer/EventCreation';
 import { Calendar, Users, BarChart3, UserCheck } from 'lucide-react';
+import { ResponsiveContainer, BarChart as RBarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, LineChart, Line } from 'recharts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -31,13 +32,44 @@ export default function StaffDashboard() {
   const [volAssignments, setVolAssignments] = useState<Array<{ id: number; event_id: string; user_id: string }>>([]);
   const [deptSelect, setDeptSelect] = useState<string>('');
   const [savingDept, setSavingDept] = useState(false);
-  const [deptParticipants, setDeptParticipants] = useState<Array<{ user_id: string; profile: any; events: Array<{ id: string; title: string; start_date: string }> }>>([]);
+  const [deptParticipants, setDeptParticipants] = useState<Array<{ user_id: string; profile: any; events: Array<{ id: string; title: string; registration_date: string }> }>>([]);
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [participantQuery, setParticipantQuery] = useState('');
   const [participantSort, setParticipantSort] = useState<'recent' | 'name' | 'events'>('recent');
   const [isParticipantDialogOpen, setIsParticipantDialogOpen] = useState(false);
   const [selectedParticipantDetail, setSelectedParticipantDetail] = useState<any | null>(null);
   const [deptRegsTotal, setDeptRegsTotal] = useState(0);
+  const [deptParticipantsCount, setDeptParticipantsCount] = useState(0);
+  const [deptTotalRegistrations, setDeptTotalRegistrations] = useState(0);
+  const [recentDeptRegs, setRecentDeptRegs] = useState<Array<{ user_id: string; name: string; email: string; event_title: string; when: string }>>([]);
+  const [upcomingDeptEvents, setUpcomingDeptEvents] = useState<Array<{ id: string; title: string; start_date: string }>>([]);
+  const [regsByEvent, setRegsByEvent] = useState<Array<{ name: string; count: number }>>([]);
+  const [regsByDay, setRegsByDay] = useState<Array<{ day: string; count: number }>>([]);
+
+  const formatDMY = (dateStr: string) => {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '—';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  const formatDMYTime = (dateStr: string) => {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '—';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true });
+    return `${dd}/${mm}/${yyyy}, ${time}`;
+  };
+
+  const shorten = (label: string) => {
+    if (!label) return '';
+    const max = 16;
+    return label.length > max ? label.slice(0, max - 1) + '…' : label;
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -70,7 +102,26 @@ export default function StaffDashboard() {
           .from('profiles')
           .select('user_id, first_name, last_name, email, department')
           .in('user_id', coordUserIds);
-        setCoordinators(profs || []);
+        const normalize = (s: string | null | undefined) => (s || '')
+          .toString()
+          .toLowerCase()
+          .replace(/&/g, 'and')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+        const deptKey = normalize(department);
+        const aliasSet: Record<string, string[]> = {
+          'computer-science': ['computer-science', 'computer-science-engineering', 'computer-science-and-engineering', 'cse', 'cs'],
+          'electronics': ['electronics', 'electronics-and-communication-engineering', 'electronics-communication-engineering', 'ece'],
+          'mechanical': ['mechanical', 'mechanical-engineering', 'me'],
+          'civil': ['civil', 'civil-engineering'],
+          'safety-fire': ['safety-fire', 'safety-and-fire-engineering', 'safety-fire-engineering']
+        };
+        const allowed = new Set((aliasSet[deptKey] || [deptKey]).map(normalize));
+        const filtered = (profs || []).filter((p: any) => {
+          const pd = normalize(p.department);
+          return pd && allowed.has(pd);
+        });
+        setCoordinators(filtered);
       } else {
         setCoordinators([]);
       }
@@ -79,7 +130,23 @@ export default function StaffDashboard() {
           .from('profiles')
           .select('user_id, first_name, last_name, email, department')
           .in('user_id', volUserIds);
-        setVolunteers(vprofs || []);
+        const normalize = (s: string | null | undefined) => (s || '')
+          .toString()
+          .toLowerCase()
+          .replace(/&/g, 'and')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+        const deptKey = normalize(department);
+        const aliasSet: Record<string, string[]> = {
+          'computer-science': ['computer-science', 'computer-science-engineering', 'computer-science-and-engineering', 'cse', 'cs'],
+          'electronics': ['electronics', 'electronics-and-communication-engineering', 'electronics-communication-engineering', 'ece'],
+          'mechanical': ['mechanical', 'mechanical-engineering', 'me'],
+          'civil': ['civil', 'civil-engineering'],
+          'safety-fire': ['safety-fire', 'safety-and-fire-engineering', 'safety-fire-engineering']
+        };
+        const allowed = new Set((aliasSet[deptKey] || [deptKey]).map(normalize));
+        const filteredVols = (vprofs || []).filter((p: any) => allowed.has(normalize(p.department)));
+        setVolunteers(filteredVols);
       } else {
         setVolunteers([]);
       }
@@ -107,9 +174,106 @@ export default function StaffDashboard() {
       } else {
         setAssignments([]);
       }
+
+      // Compute participants and total registrations for department (for Overview stats)
+      const { data: regRows } = await (supabase as any)
+        .from('event_registrations')
+        .select('user_id, registration_date, event_id, events(department, title)')
+        .in('event_id', eventIds);
+      const uniqueUsers = new Set<string>();
+      (regRows || []).forEach((r: any) => { uniqueUsers.add(r.user_id); });
+      setDeptParticipantsCount(uniqueUsers.size);
+      setDeptTotalRegistrations((regRows || []).length);
+
+      // Aggregate: registrations by event
+      const mapEventCounts = new Map<string, { name: string; count: number }>();
+      (regRows || []).forEach((r: any) => {
+        const key = r.event_id;
+        const name = r.events?.title || 'Event';
+        const prev = mapEventCounts.get(key) || { name, count: 0 };
+        prev.count += 1;
+        mapEventCounts.set(key, prev);
+      });
+      setRegsByEvent(Array.from(mapEventCounts.values()).sort((a,b)=>b.count-a.count).slice(0,8));
+
+      // Aggregate: registrations by day (last 14 days)
+      const today = new Date();
+      const days: Array<{ day: string; count: number }> = [];
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const dd = String(d.getDate()).padStart(2,'0');
+        const mm = String(d.getMonth()+1).padStart(2,'0');
+        const yyyy = d.getFullYear();
+        days.push({ day: `${dd}/${mm}/${yyyy}`, count: 0 });
+      }
+      const byIso = (dateStr: string) => {
+        const d = new Date(dateStr);
+        const dd = String(d.getDate()).padStart(2,'0');
+        const mm = String(d.getMonth()+1).padStart(2,'0');
+        const yyyy = d.getFullYear();
+        return `${dd}/${mm}/${yyyy}`;
+      };
+      (regRows || []).forEach((r: any) => {
+        const key = byIso(r.registration_date);
+        const slot = days.find(x => x.day === key);
+        if (slot) slot.count += 1;
+      });
+      setRegsByDay(days);
+
+      // Recent registrations with names and event titles (two-step to avoid join issues under RLS)
+      const { data: recentRegs } = await (supabase as any)
+        .from('event_registrations')
+        .select('user_id, registration_date, event_id')
+        .in('event_id', eventIds)
+        .order('registration_date', { ascending: false })
+        .limit(5);
+      if (recentRegs && recentRegs.length > 0) {
+        const uids = Array.from(new Set(recentRegs.map((r: any) => r.user_id)));
+        const eids = Array.from(new Set(recentRegs.map((r: any) => r.event_id)));
+        const [{ data: profs2 }, { data: evs2 }] = await Promise.all([
+          (supabase as any).from('profiles').select('user_id, first_name, last_name, email').in('user_id', uids),
+          (supabase as any).from('events').select('id, title').in('id', eids)
+        ]);
+        const pmap: Record<string, any> = {};
+        (profs2 || []).forEach((p: any) => { pmap[p.user_id] = p; });
+        const emap: Record<string, any> = {};
+        (evs2 || []).forEach((e: any) => { emap[e.id] = e; });
+        const recentMapped = recentRegs.map((r: any) => {
+          const prof = pmap[r.user_id];
+          const ev = emap[r.event_id];
+          return {
+            user_id: r.user_id,
+            name: `${prof?.first_name || ''} ${prof?.last_name || ''}`.trim() || prof?.email || '—',
+            email: prof?.email || '—',
+            event_title: ev?.title || '—',
+            when: r.registration_date
+          };
+        });
+        setRecentDeptRegs(recentMapped);
+      } else {
+        setRecentDeptRegs([]);
+      }
+
+      // Upcoming department events (next 5)
+      const nowIso = new Date().toISOString();
+      const { data: upcoming } = await (supabase as any)
+        .from('events')
+        .select('id, title, start_date')
+        .eq('department', department)
+        .gt('start_date', nowIso)
+        .order('start_date', { ascending: true })
+        .limit(5);
+      setUpcomingDeptEvents(upcoming || []);
     };
     void loadData();
   }, [department]);
+
+  const assignedCoordinatorsCount = useMemo(() => {
+    const uniq = new Set<string>();
+    assignments.forEach(a => uniq.add(a.user_id));
+    return uniq.size;
+  }, [assignments]);
 
   useEffect(() => {
     const loadParticipants = async () => {
@@ -118,13 +282,13 @@ export default function StaffDashboard() {
       try {
         const { data: regs } = await (supabase as any)
           .from('event_registrations')
-          .select('user_id, registration_date, events(id, title, department, start_date)')
+          .select('user_id, registration_date, events(id, title, department)')
           .eq('events.department', department);
-        const byUser = new Map<string, Array<{ id: string; title: string; start_date: string }>>();
+        const byUser = new Map<string, Array<{ id: string; title: string; registration_date: string }>>();
         (regs || []).forEach((r: any) => {
           if (!r.events) return;
           const arr = byUser.get(r.user_id) || [];
-          arr.push({ id: r.events.id, title: r.events.title, start_date: r.events.start_date });
+          arr.push({ id: r.events.id, title: r.events.title, registration_date: r.registration_date });
           byUser.set(r.user_id, arr);
         });
         const ids = Array.from(byUser.keys());
@@ -250,11 +414,107 @@ export default function StaffDashboard() {
             </TabsList>
 
             <TabsContent value="overview">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                <Card className="bg-gradient-card border-border"><CardContent className="p-3 sm:p-4 text-center"><div className="text-xs text-muted-foreground mb-1">Department</div><div className="text-lg sm:text-2xl font-bold text-foreground">{department || '—'}</div></CardContent></Card>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
+                <Card className="bg-gradient-card border-border"><CardContent className="p-3 sm:p-4 text-center"><div className="text-xs text-muted-foreground mb-1">Total Participants</div><div className="text-lg sm:text-2xl font-bold text-foreground">{deptParticipantsCount}</div></CardContent></Card>
                 <Card className="bg-gradient-card border-border"><CardContent className="p-3 sm:p-4 text-center"><div className="text-xs text-muted-foreground mb-1">Events</div><div className="text-lg sm:text-2xl font-bold text-foreground">{deptEvents.length}</div></CardContent></Card>
-                <Card className="bg-gradient-card border-border"><CardContent className="p-3 sm:p-4 text-center"><div className="text-xs text-muted-foreground mb-1">Coordinators</div><div className="text-lg sm:text-2xl font-bold text-foreground">{coordinators.length}</div></CardContent></Card>
+                <Card className="bg-gradient-card border-border"><CardContent className="p-3 sm:p-4 text-center"><div className="text-xs text-muted-foreground mb-1">Assigned Coordinators</div><div className="text-lg sm:text-2xl font-bold text-foreground">{assignedCoordinatorsCount}</div></CardContent></Card>
                 <Card className="bg-gradient-card border-border"><CardContent className="p-3 sm:p-4 text-center"><div className="text-xs text-muted-foreground mb-1">Volunteers</div><div className="text-lg sm:text-2xl font-bold text-foreground">{volunteers.length}</div></CardContent></Card>
+                <Card className="bg-gradient-card border-border"><CardContent className="p-3 sm:p-4 text-center"><div className="text-xs text-muted-foreground mb-1">Total Registrations</div><div className="text-lg sm:text-2xl font-bold text-foreground">{deptTotalRegistrations}</div></CardContent></Card>
+              </div>
+
+              {/* Key sections under stats */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mt-4">
+                <Card>
+                  <CardHeader className="p-3 sm:p-6"><CardTitle>Recent Registrations</CardTitle></CardHeader>
+                  <CardContent className="p-3 sm:p-6">
+                    {recentDeptRegs.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">No recent registrations.</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {recentDeptRegs.map((r, idx) => (
+                          <div key={r.user_id + idx} className="flex items-center justify-between p-2 rounded border bg-muted/30">
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium truncate">{r.name}</div>
+                              <div className="text-xs text-muted-foreground truncate">{r.event_title}</div>
+                            </div>
+                            <div className="text-xs text-muted-foreground whitespace-nowrap">{formatDMYTime(r.when)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="p-3 sm:p-6"><CardTitle>Upcoming Department Events</CardTitle></CardHeader>
+                  <CardContent className="p-3 sm:p-6">
+                    {upcomingDeptEvents.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">No upcoming events.</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {upcomingDeptEvents.map((e) => (
+                          <div key={e.id} className="flex items-center justify-between p-2 rounded border bg-muted/30">
+                            <div className="text-sm font-medium truncate">{e.title}</div>
+                            <div className="text-xs text-muted-foreground whitespace-nowrap">{formatDMY(e.start_date)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Charts section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mt-4">
+                <Card>
+                  <CardHeader className="p-3 sm:p-6"><CardTitle>Registrations by Event</CardTitle></CardHeader>
+                  <CardContent className="p-3 sm:p-6">
+                    {regsByEvent.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">No data available.</div>
+                    ) : (
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RBarChart data={regsByEvent} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+                            <defs>
+                              <linearGradient id="staffBar" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.9} />
+                                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }} interval="preserveStartEnd" minTickGap={12} height={40} tickFormatter={shorten as any} />
+                            <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }} allowDecimals={false} width={28} />
+                            <Tooltip wrapperStyle={{ outline: 'none', fontSize: 12 }} contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
+                            <Legend wrapperStyle={{ fontSize: 12, color: 'hsl(var(--foreground))' }} />
+                            <Bar dataKey="count" name="Registrations" fill="url(#staffBar)" radius={[6,6,0,0]} />
+                          </RBarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="p-3 sm:p-6"><CardTitle>Registrations (Last 14 Days)</CardTitle></CardHeader>
+                  <CardContent className="p-3 sm:p-6">
+                    {regsByDay.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">No data available.</div>
+                    ) : (
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={regsByDay} margin={{ top: 8, right: 8, left: -10, bottom: 8 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }} minTickGap={20} interval="preserveStartEnd" />
+                            <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }} allowDecimals={false} width={28} />
+                            <Tooltip wrapperStyle={{ outline: 'none', fontSize: 12 }} contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
+                            <Legend wrapperStyle={{ fontSize: 12, color: 'hsl(var(--foreground))' }} />
+                            <Line type="monotone" dataKey="count" name="Registrations" stroke="hsl(var(--secondary))" strokeWidth={2} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
 
@@ -266,8 +526,8 @@ export default function StaffDashboard() {
             </TabsContent>
 
             <TabsContent value="participants">
-              <Card>
-                <CardHeader className="p-3 sm:p-6">
+          <Card>
+            <CardHeader className="p-3 sm:p-6">
                   <CardTitle className="flex items-center justify-between">
                     <span>Participants (Department)</span>
                     <div className="text-right leading-tight">
@@ -275,7 +535,7 @@ export default function StaffDashboard() {
                       <div className="text-xs text-muted-foreground">Registrations: <span className="text-foreground font-medium">{deptRegsTotal}</span></div>
                     </div>
                   </CardTitle>
-                </CardHeader>
+            </CardHeader>
                 <CardContent className="p-3 sm:p-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                     <Input value={participantQuery} onChange={(e) => setParticipantQuery(e.target.value)} placeholder="Search by name or email" />
@@ -346,7 +606,7 @@ export default function StaffDashboard() {
                           {selectedParticipantDetail.events.map((e: any) => (
                             <div key={e.id} className="flex items-center justify-between p-2 rounded border bg-muted/30">
                               <span className="truncate pr-2">{e.title}</span>
-                              <span className="text-xs text-muted-foreground">{new Date(e.start_date).toLocaleDateString()}</span>
+                              <span className="text-xs text-muted-foreground">{formatDMYTime(e.registration_date)}</span>
                             </div>
                           ))}
                         </div>
@@ -555,10 +815,55 @@ export default function StaffDashboard() {
             </TabsContent>
 
             <TabsContent value="analytics">
-              <Card>
-                <CardHeader className="p-3 sm:p-6"><CardTitle>Department Analytics</CardTitle></CardHeader>
-                <CardContent className="p-3 sm:p-6 text-sm text-muted-foreground">Analytics for department events can be displayed here.</CardContent>
-              </Card>
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader className="p-3 sm:p-6"><CardTitle>Overview</CardTitle></CardHeader>
+                  <CardContent className="p-3 sm:p-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                      <Card className="bg-gradient-card border-border"><CardContent className="p-3 sm:p-4 text-center"><div className="text-xs text-muted-foreground mb-1">Total Participants</div><div className="text-lg sm:text-2xl font-bold text-foreground">{deptParticipantsCount}</div></CardContent></Card>
+                      <Card className="bg-gradient-card border-border"><CardContent className="p-3 sm:p-4 text-center"><div className="text-xs text-muted-foreground mb-1">Total Registrations</div><div className="text-lg sm:text-2xl font-bold text-foreground">{deptTotalRegistrations}</div></CardContent></Card>
+                      <Card className="bg-gradient-card border-border"><CardContent className="p-3 sm:p-4 text-center"><div className="text-xs text-muted-foreground mb-1">Events</div><div className="text-lg sm:text-2xl font-bold text-foreground">{deptEvents.length}</div></CardContent></Card>
+                      <Card className="bg-gradient-card border-border"><CardContent className="p-3 sm:p-4 text-center"><div className="text-xs text-muted-foreground mb-1">Assigned Coordinators</div><div className="text-lg sm:text-2xl font-bold text-foreground">{assignedCoordinatorsCount}</div></CardContent></Card>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="p-3 sm:p-6"><CardTitle>Registrations by Event</CardTitle></CardHeader>
+                  <CardContent className="p-3 sm:p-6">
+                    <div className="h-72">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RBarChart data={regsByEvent} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }} interval="preserveStartEnd" minTickGap={12} height={40} tickFormatter={shorten as any} />
+                          <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }} allowDecimals={false} width={28} />
+                          <Tooltip wrapperStyle={{ outline: 'none', fontSize: 12 }} contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
+                          <Legend wrapperStyle={{ fontSize: 12, color: 'hsl(var(--foreground))' }} />
+                          <Bar dataKey="count" name="Registrations" fill="url(#staffBar)" radius={[6,6,0,0]} />
+                        </RBarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="p-3 sm:p-6"><CardTitle>Registrations Over Time</CardTitle></CardHeader>
+                  <CardContent className="p-3 sm:p-6">
+                    <div className="h-72">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={regsByDay} margin={{ top: 8, right: 8, left: -10, bottom: 8 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }} minTickGap={20} interval="preserveStartEnd" />
+                          <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--foreground))' }} allowDecimals={false} width={28} />
+                          <Tooltip wrapperStyle={{ outline: 'none', fontSize: 12 }} contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }} />
+                          <Legend wrapperStyle={{ fontSize: 12, color: 'hsl(var(--foreground))' }} />
+                          <Line type="monotone" dataKey="count" name="Registrations" stroke="hsl(var(--secondary))" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
 
           </Tabs>

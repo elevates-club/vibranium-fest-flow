@@ -8,7 +8,7 @@ import { Calendar, Check, X as XIcon, Users as UsersIcon, BarChart3 } from 'luci
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { ResponsiveContainer, BarChart as RBarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, BarChart as RBarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { apiCall } from '@/lib/apiUtils';
 
@@ -27,6 +27,9 @@ export default function CoordinatorDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
   const [totalRegistrations, setTotalRegistrations] = useState(0);
+  const [volCounts, setVolCounts] = useState<Record<string, number>>({});
+  const [recentApproved, setRecentApproved] = useState<any[]>([]);
+  const [regsByDay, setRegsByDay] = useState<Array<{ day: string; count: number }>>([]);
   const [volSearch, setVolSearch] = useState('');
   const [allVolunteers, setAllVolunteers] = useState<any[]>([]);
   const [selectedEventForVols, setSelectedEventForVols] = useState<string | undefined>(undefined);
@@ -92,6 +95,15 @@ export default function CoordinatorDashboard() {
         setEventCounts(countsMap);
         setTotalRegistrations(total);
 
+        // Volunteers per event counts map
+        const { data: volRows } = await (supabase as any)
+          .from('event_volunteers')
+          .select('event_id')
+          .in('event_id', eventIds);
+        const vMap: Record<string, number> = {};
+        (volRows || []).forEach((r: any) => { vMap[r.event_id] = (vMap[r.event_id] || 0) + 1; });
+        setVolCounts(vMap);
+
         // Top 5 pending registrations (with names)
         const { data: pendList } = await (supabase as any)
           .from('event_registrations')
@@ -144,6 +156,55 @@ export default function CoordinatorDashboard() {
           // sort by hour in 12h; fallback to count
           return b.count - a.count;
         }).slice(0,8));
+
+        // Registrations by day (last 14 days)
+        const today = new Date();
+        const days: Array<{ day: string; count: number }> = [];
+        for (let i = 13; i >= 0; i--) {
+          const d = new Date(today);
+          d.setDate(d.getDate() - i);
+          const dd = String(d.getDate()).padStart(2, '0');
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const yyyy = d.getFullYear();
+          days.push({ day: `${dd}/${mm}/${yyyy}`, count: 0 });
+        }
+        const dateKey = (s: string) => {
+          const d = new Date(s);
+          const dd = String(d.getDate()).padStart(2, '0');
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const yyyy = d.getFullYear();
+          return `${dd}/${mm}/${yyyy}`;
+        };
+        (regsAll || []).forEach((r: any) => {
+          const key = dateKey(r.registration_date);
+          const slot = days.find(x => x.day === key);
+          if (slot) slot.count += 1;
+        });
+        setRegsByDay(days);
+
+        // Recent approvals
+        const { data: apprList } = await (supabase as any)
+          .from('event_registrations')
+          .select('id, user_id, event_id, registration_date, events(title)')
+          .in('event_id', eventIds)
+          .or('status.eq.approved,status.eq.registered')
+          .order('registration_date', { ascending: false })
+          .limit(5);
+        const idsForApprProfiles = Array.from(new Set((apprList || []).map((r: any) => r.user_id)));
+        let profileMap2: Record<string, any> = {};
+        if (idsForApprProfiles.length > 0) {
+          const { data: profs } = await (supabase as any)
+            .from('profiles')
+            .select('user_id, first_name, last_name, email')
+            .in('user_id', idsForApprProfiles);
+          (profs || []).forEach((p: any) => { profileMap2[p.user_id] = p; });
+        }
+        setRecentApproved((apprList || []).map((r: any) => ({
+          id: r.id,
+          name: `${profileMap2[r.user_id]?.first_name || ''} ${profileMap2[r.user_id]?.last_name || ''}`.trim() || profileMap2[r.user_id]?.email || r.user_id,
+          eventTitle: r.events?.title || 'Event',
+          time: r.registration_date,
+        })));
       } else {
         setVolunteerCount(0);
         setPendingCount(0);
@@ -377,6 +438,53 @@ export default function CoordinatorDashboard() {
                   )}
                 </CardContent>
               </Card>
+
+            {/* Additional insights: Registrations over time & Volunteers per Event */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Registrations (Last 14 Days)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {regsByDay.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No data</div>
+                  ) : (
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={regsByDay} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} />
+                          <XAxis dataKey="day" tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} minTickGap={16} />
+                          <YAxis tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} allowDecimals={false} />
+                          <Tooltip contentStyle={{ background: 'var(--background)', border: '1px solid var(--border)', color: 'var(--foreground)' }} />
+                          <Legend />
+                          <Line type="monotone" dataKey="count" name="Registrations" stroke="#60a5fa" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Volunteers per Event</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {events.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No events</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {events.map((ev) => (
+                        <div key={ev.id} className="flex items-center justify-between text-sm">
+                          <span className="truncate pr-2">{ev.title}</span>
+                          <span className="text-muted-foreground">{volCounts[ev.id] || 0}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
 
               {/* Recent Pending Approvals */}
               <Card className="mt-4">
@@ -618,6 +726,29 @@ export default function CoordinatorDashboard() {
                       <div key={d.department} className="flex items-center justify-between text-sm">
                         <span className="truncate pr-2">{d.department}</span>
                         <span className="text-muted-foreground">{d.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Approvals */}
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle>Recent Approvals</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {recentApproved.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">No approvals yet</div>
+                ) : (
+                  <div className="space-y-2">
+                    {recentApproved.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between text-sm">
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{p.name}</div>
+                          <div className="text-xs text-muted-foreground truncate">{p.eventTitle} • {new Date(p.time).toLocaleString()}</div>
+                        </div>
                       </div>
                     ))}
                   </div>

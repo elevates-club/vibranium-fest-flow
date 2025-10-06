@@ -36,6 +36,8 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
   const descriptionFsRef = useRef<HTMLTextAreaElement>(null);
   const [userRoles, setUserRoles] = useState<string[]>([]);
   const [staffDept, setStaffDept] = useState<string | null>(null);
+  const [eventsSearch, setEventsSearch] = useState('');
+  const [eventsSort, setEventsSort] = useState<'recent' | 'start' | 'title'>('recent');
 
   useEffect(() => {
     const loadRoles = async () => {
@@ -124,7 +126,7 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
   const [customSelections, setCustomSelections] = useState<Array<{
     id: string;
     label: string;
-    type: 'select' | 'radio' | 'checkbox' | 'text' | 'image' | 'upi';
+    type: 'select' | 'radio' | 'checkbox';
     options: string[];
     required: boolean;
   }>>([]);
@@ -183,21 +185,6 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
           }
         : selection
     ));
-  };
-
-  // Drag and drop for custom fields
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const onDragStart = (index: number) => setDragIndex(index);
-  const onDragOver = (e: React.DragEvent<HTMLDivElement>) => e.preventDefault();
-  const onDrop = (index: number) => {
-    if (dragIndex === null || dragIndex === index) return;
-    setCustomSelections(prev => {
-      const next = [...prev];
-      const [moved] = next.splice(dragIndex, 1);
-      next.splice(index, 0, moved);
-      return next;
-    });
-    setDragIndex(null);
   };
   
   const [formData, setFormData] = useState({
@@ -579,6 +566,22 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
     ? events.filter((e: any) => (e.department || '') === filterDepartment)
     : events;
 
+  const normalizedEvents = Array.isArray(filteredEvents) ? [...filteredEvents] : [];
+  const searchLower = eventsSearch.toLowerCase().trim();
+  const filteredBySearch = normalizedEvents.filter((e: any) => {
+    if (!searchLower) return true;
+    const title = (e.title || '').toLowerCase();
+    const desc = (e.description || '').toLowerCase();
+    const dept = (e.department || '').toLowerCase();
+    return title.includes(searchLower) || desc.includes(searchLower) || dept.includes(searchLower);
+  });
+  const sorted = filteredBySearch.sort((a: any, b: any) => {
+    if (eventsSort === 'title') return (a.title || '').localeCompare(b.title || '');
+    if (eventsSort === 'start') return new Date(a.start_date || 0).getTime() - new Date(b.start_date || 0).getTime();
+    // recent
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -843,15 +846,7 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
                     </div>
                     
                     {customSelections.map((selection, index) => (
-                      <div
-                        key={selection.id}
-                        className="p-3 border rounded-lg bg-background space-y-3"
-                        draggable
-                        onDragStart={() => onDragStart(index)}
-                        onDragOver={onDragOver}
-                        onDrop={() => onDrop(index)}
-                        title="Drag to reorder"
-                      >
+                      <div key={selection.id} className="p-3 border rounded-lg bg-background space-y-3">
                         <div className="flex items-center justify-between">
                           <h4 className="font-medium text-sm">Field {index + 1}</h4>
                           <Button
@@ -888,73 +883,46 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
                                 <SelectItem value="select">Dropdown</SelectItem>
                                 <SelectItem value="radio">Radio Buttons</SelectItem>
                                 <SelectItem value="checkbox">Checkboxes</SelectItem>
-                                <SelectItem value="text">Short Text</SelectItem>
-                                <SelectItem value="image">Image Upload</SelectItem>
-                                <SelectItem value="upi">UPI Payment</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                         </div>
-                        {/* Options editor for list-based fields */}
-                        {(selection.type === 'select' || selection.type === 'radio' || selection.type === 'checkbox') && (
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label>Options</Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addOptionToSelection(selection.id)}
+                            >
+                              <Plus className="w-4 h-4 mr-1" />
+                              Add Option
+                            </Button>
+                          </div>
+                          
                           <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label>Options</Label>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => addOptionToSelection(selection.id)}
-                              >
-                                <Plus className="w-4 h-4 mr-1" />
-                                Add Option
-                              </Button>
-                            </div>
-                            <div className="space-y-2">
-                              {selection.options.map((option, optionIndex) => (
-                                <div key={optionIndex} className="flex items-center gap-2">
-                                  <Input
-                                    value={option}
-                                    onChange={(e) => updateOptionInSelection(selection.id, optionIndex, e.target.value)}
-                                    placeholder={`Option ${optionIndex + 1}`}
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeOptionFromSelection(selection.id, optionIndex)}
-                                    className="text-destructive hover:text-destructive"
-                                  >
-                                    <X className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Field-specific helpers */}
-                        {selection.type === 'text' && (
-                          <p className="text-xs text-muted-foreground">Participants will enter a short answer.</p>
-                        )}
-                        {selection.type === 'image' && (
-                          <p className="text-xs text-muted-foreground">Participants can upload an image (e.g., receipt, ID). You can verify later.</p>
-                        )}
-                        {selection.type === 'upi' && (
-                          <div className="text-xs text-muted-foreground space-y-2">
-                            <p>Displays UPI QR and requires a Transaction ID when registration fee &gt; 0.</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              <div className="space-y-1">
-                                <Label>UPI Payee VPA</Label>
-                                <Input value={selection.options[0] || ''} onChange={(e) => updateOptionInSelection(selection.id, 0, e.target.value)} placeholder="merchant@upi" />
+                            {selection.options.map((option, optionIndex) => (
+                              <div key={optionIndex} className="flex items-center gap-2">
+                                <Input
+                                  value={option}
+                                  onChange={(e) => updateOptionInSelection(selection.id, optionIndex, e.target.value)}
+                                  placeholder={`Option ${optionIndex + 1}`}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeOptionFromSelection(selection.id, optionIndex)}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
                               </div>
-                              <div className="space-y-1">
-                                <Label>QR Image URL (optional)</Label>
-                                <Input value={selection.options[1] || ''} onChange={(e) => updateOptionInSelection(selection.id, 1, e.target.value)} placeholder="https://yourcdn/upi-qr.png" />
-                              </div>
-                            </div>
+                            ))}
                           </div>
-                        )}
+                        </div>
                         
                         <div className="flex items-center space-x-2">
                           <input
@@ -1059,15 +1027,32 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
           </CardDescription>
         </CardHeader>
         <CardContent className="p-3 sm:p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-3">
+            <Input
+              placeholder="Search by title, description, or department"
+              value={eventsSearch}
+              onChange={(e) => setEventsSearch(e.target.value)}
+              className="sm:col-span-2"
+            />
+            <select
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+              value={eventsSort}
+              onChange={(e) => setEventsSort(e.target.value as any)}
+            >
+              <option value="recent">Recently added</option>
+              <option value="start">Start date (soonest)</option>
+              <option value="title">Title (A–Z)</option>
+            </select>
+          </div>
           <div className="space-y-3 sm:space-y-4 max-h-[70vh] overflow-y-auto">
-            {filteredEvents.length === 0 ? (
+            {sorted.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No events created yet</p>
-                <p className="text-sm">Click "Create Event" to get started</p>
+                <p>No matching events</p>
+                <p className="text-sm">Adjust search or sorting to see results</p>
               </div>
             ) : (
-              filteredEvents.map((event) => {
+              sorted.map((event) => {
                 const registrationCount = eventRegistrations[event.id] || 0;
                 
                 // Get registration status from localStorage
