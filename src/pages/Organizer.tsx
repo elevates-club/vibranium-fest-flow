@@ -47,6 +47,14 @@ const Organizer = () => {
   const [membersLoading, setMembersLoading] = useState(false);
   const { events } = useEvents();
   const { toast } = useToast();
+  // Coordinator assignment UI state
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [eventSearch, setEventSearch] = useState('');
+  const [coordinatorSearch, setCoordinatorSearch] = useState('');
+  const [allEvents, setAllEvents] = useState<any[]>([]);
+  const [coordinators, setCoordinators] = useState<any[]>([]);
+  const [selectedAssignEvent, setSelectedAssignEvent] = useState<any>(null);
+  const [selectedAssignCoordinator, setSelectedAssignCoordinator] = useState<any>(null);
 
   // Analytics state
   // Overview quick stats (real data)
@@ -90,6 +98,32 @@ const Organizer = () => {
     if (savedEmailStatus !== null) {
       setEmailEnabled(savedEmailStatus === 'true');
     }
+  }, []);
+
+  // Load events and users with coordinator role for assignment
+  useEffect(() => {
+    const loadAssignData = async () => {
+      try {
+        const [{ data: evs }, { data: coordIds }] = await Promise.all([
+          (supabase as any).from('events').select('id, title, department, start_date').order('start_date', { ascending: true }),
+          (supabase as any).from('user_roles').select('user_id').eq('role', 'coordinator')
+        ]);
+        setAllEvents(evs || []);
+        const ids = Array.from(new Set((coordIds || []).map((r: any) => r.user_id)));
+        if (ids.length > 0) {
+          const { data: profs } = await (supabase as any)
+            .from('profiles')
+            .select('user_id, first_name, last_name, email, department')
+            .in('user_id', ids);
+          setCoordinators(profs || []);
+        } else {
+          setCoordinators([]);
+        }
+      } catch (e) {
+        console.error('Error loading assignment data', e);
+      }
+    };
+    void loadAssignData();
   }, []);
 
   const fetchRecentEvents = useCallback(async () => {
@@ -1431,6 +1465,77 @@ const Organizer = () => {
           )}
           <div className="flex justify-end pt-3 border-t">
             <Button variant="outline" onClick={() => setIsParticipantDetailsOpen(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Coordinator Dialog */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Assign Coordinator to Event</DialogTitle>
+            <DialogDescription>Search and assign a coordinator to any event</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <div className="text-sm mb-1">Search Events</div>
+                <Input value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} placeholder="Search by title or department" />
+                <div className="mt-2 max-h-48 overflow-y-auto space-y-1">
+                  {allEvents
+                    .filter(e => {
+                      const q = eventSearch.toLowerCase().trim();
+                      if (!q) return true;
+                      return (e.title || '').toLowerCase().includes(q) || (e.department || '').toLowerCase().includes(q);
+                    })
+                    .map(e => (
+                      <button key={e.id} onClick={() => setSelectedAssignEvent(e)} className={`w-full text-left p-2 rounded border ${selectedAssignEvent?.id === e.id ? 'bg-primary/10 border-primary' : 'bg-muted/40 border-border'}`}>
+                        <div className="font-medium truncate">{e.title}</div>
+                        <div className="text-xs text-muted-foreground truncate">{e.department || '—'}</div>
+                      </button>
+                    ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm mb-1">Search Coordinators</div>
+                <Input value={coordinatorSearch} onChange={(e) => setCoordinatorSearch(e.target.value)} placeholder="Search by name or email" />
+                <div className="mt-2 max-h-48 overflow-y-auto space-y-1">
+                  {coordinators
+                    .filter(c => {
+                      const q = coordinatorSearch.toLowerCase().trim();
+                      if (!q) return true;
+                      const name = `${c.first_name || ''} ${c.last_name || ''}`.toLowerCase();
+                      return name.includes(q) || (c.email || '').toLowerCase().includes(q);
+                    })
+                    .map(c => (
+                      <button key={c.user_id} onClick={() => setSelectedAssignCoordinator(c)} className={`w-full text-left p-2 rounded border ${selectedAssignCoordinator?.user_id === c.user_id ? 'bg-primary/10 border-primary' : 'bg-muted/40 border-border'}`}>
+                        <div className="font-medium truncate">{`${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email}</div>
+                        <div className="text-xs text-muted-foreground truncate">{c.email}</div>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex-shrink-0 flex justify-end gap-2 pt-3 border-t">
+            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Close</Button>
+            <Button
+              disabled={!selectedAssignEvent || !selectedAssignCoordinator}
+              onClick={async () => {
+                try {
+                  const { error } = await (supabase as any)
+                    .from('event_coordinators')
+                    .insert({ user_id: selectedAssignCoordinator.user_id, event_id: selectedAssignEvent.id });
+                  if (error) throw error;
+                  toast({ title: 'Assigned', description: 'Coordinator assigned to event' });
+                  setAssignDialogOpen(false);
+                } catch (e: any) {
+                  toast({ title: 'Failed', description: e.message || 'Assignment failed', variant: 'destructive' });
+                }
+              }}
+            >
+              Assign
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

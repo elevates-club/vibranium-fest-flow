@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { QrCode, CheckCircle, Keyboard, Camera } from 'lucide-react';
-import { useEvents } from '@/hooks/useEvents';
+// Removed global events; we will load only assigned events for this volunteer
 import QRScannerCamera from './QRScannerCamera';
 
 interface QRScannerProps {
@@ -21,13 +21,27 @@ interface QRScannerProps {
 export default function QRScanner({ onCheckInSuccess, onScanSuccess }: QRScannerProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { events } = useEvents();
+  const [assignedEvents, setAssignedEvents] = useState<any[]>([]);
   const [qrCode, setQrCode] = useState('');
   const [selectedEvent, setSelectedEvent] = useState('');
   const [zone, setZone] = useState('');
   const [notes, setNotes] = useState('');
   const [processing, setProcessing] = useState(false);
   const [scanMode, setScanMode] = useState<'camera' | 'manual'>('camera');
+
+  // Load only events assigned to this volunteer
+  useEffect(() => {
+    const loadAssigned = async () => {
+      if (!user?.id) return;
+      const { data } = await (supabase as any)
+        .from('event_volunteers')
+        .select('events:events(id, title, start_date, location)')
+        .eq('user_id', user.id);
+      const evs = (data || []).map((r: any) => r.events).filter(Boolean);
+      setAssignedEvents(evs);
+    };
+    void loadAssigned();
+  }, [user]);
 
   const handleQRCodeDetected = (qrCodeText: string) => {
     setQrCode(qrCodeText);
@@ -172,11 +186,15 @@ export default function QRScanner({ onCheckInSuccess, onScanSuccess }: QRScanner
                 <SelectValue placeholder="Choose event for check-in" />
               </SelectTrigger>
               <SelectContent>
-                {events.map((event) => (
-                  <SelectItem key={event.id} value={event.id}>
-                    {event.title}
-                  </SelectItem>
-                ))}
+                {assignedEvents.length === 0 ? (
+                  <SelectItem disabled value="none">No assigned events</SelectItem>
+                ) : (
+                  assignedEvents.map((event: any) => (
+                    <SelectItem key={event.id} value={event.id}>
+                      {event.title}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>

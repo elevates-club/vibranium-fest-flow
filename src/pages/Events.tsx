@@ -254,13 +254,17 @@ const Events = () => {
     try {
       console.log('Submitting registration for event:', selectedEvent.title, 'User:', user.id);
       
+      // Determine initial status based on fee
+      const isPaid = Number(selectedEvent.registration_fee || 0) > 0;
+      const initialStatus = isPaid ? 'pending' : 'registered';
+
       // Register for the event - only include fields that exist in the database
       const { data: registrationData, error: registrationError } = await supabase
         .from('event_registrations')
         .insert({
           event_id: selectedEvent.id,
           user_id: user.id,
-          status: 'registered',
+          status: initialStatus,
           custom_answers: Object.keys(customSelectionAnswers).length > 0 ? customSelectionAnswers : null
         })
         .select();
@@ -272,12 +276,16 @@ const Events = () => {
 
       console.log('Registration successful:', registrationData);
 
-      // Send email notification (simulated for now)
-      await sendRegistrationEmail(selectedEvent, registrationForm);
+      // Send email only for free events where registration is immediate
+      if (!isPaid) {
+        await sendRegistrationEmail(selectedEvent, registrationForm);
+      }
 
       toast({
-        title: "Success!",
-        description: "Successfully registered for the event. Check your email for confirmation.",
+        title: isPaid ? "Request submitted" : "Success!",
+        description: isPaid
+          ? "Your request is sent. Waiting for coordinator approval."
+          : "Successfully registered for the event. Check your email for confirmation.",
       });
       
       // Refresh data
@@ -796,7 +804,7 @@ const Events = () => {
               ) : (
                 <>
                   <Mail className="w-4 h-4 mr-2" />
-                  Confirm Registration
+                  {Number(selectedEvent?.registration_fee || 0) > 0 ? 'Request Approval' : 'Confirm Registration'}
                 </>
               )}
                 </Button>

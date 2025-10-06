@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { QrCode, Camera, CheckCircle, XCircle, User, Mail, Calendar } from 'lucide-react';
 import QRCodeService from '@/services/qrCodeService';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { BrowserMultiFormatReader } from '@zxing/library';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ const QRScanner: React.FC<QRScannerProps> = ({
   onScanSuccess,
   className = ""
 }) => {
+  const { user } = useAuth();
   const [isScanning, setIsScanning] = useState(false);
   const [scannedData, setScannedData] = useState<any>(null);
   const [scanResult, setScanResult] = useState<'success' | 'error' | null>(null);
@@ -49,15 +51,23 @@ const QRScanner: React.FC<QRScannerProps> = ({
         codeReaderRef.current.reset();
       }
     };
-  }, []);
+  }, [user?.id]);
 
   const fetchEvents = async () => {
     try {
-      const { data, error } = await supabase
-        .from('events')
-        .select('id, title, start_date, end_date')
-        .order('start_date', { ascending: true });
-      if (!error) setEvents(data || []);
+      if (!user?.id) {
+        setEvents([]);
+        return;
+      }
+      // Only events assigned to this volunteer
+      const { data, error } = await (supabase as any)
+        .from('event_volunteers')
+        .select('events:events(id, title, start_date, end_date)')
+        .eq('user_id', user.id);
+      if (!error) {
+        const evs = (data || []).map((r: any) => r.events).filter(Boolean);
+        setEvents(evs);
+      }
     } catch {}
   };
 
@@ -285,9 +295,13 @@ const QRScanner: React.FC<QRScannerProps> = ({
               <SelectValue placeholder="Choose event for check-in" />
             </SelectTrigger>
             <SelectContent>
-              {events.map((e) => (
-                <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>
-              ))}
+              {events.length === 0 ? (
+                <SelectItem disabled value="none">No assigned events</SelectItem>
+              ) : (
+                events.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>

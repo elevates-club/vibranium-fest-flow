@@ -27,8 +27,6 @@ const Account = () => {
   const [year, setYear] = useState('');
   const [customYear, setCustomYear] = useState('');
   const [college, setCollege] = useState('');
-  const [gender, setGender] = useState('');
-  const [customGender, setCustomGender] = useState('');
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -43,7 +41,6 @@ const Account = () => {
     if (["2", "2nd", "second", "second year", "2nd year"].includes(raw)) return { yearValue: '2nd Year' };
     if (["3", "3rd", "third", "third year", "3rd year"].includes(raw)) return { yearValue: '3rd Year' };
     if (["4", "4th", "fourth", "fourth year", "final", "final year", "4th year"].includes(raw)) return { yearValue: '4th Year' };
-    // Unknown → set as Other and keep custom text with original value
     return { yearValue: 'Other', custom: String(val) };
   };
 
@@ -53,7 +50,7 @@ const Account = () => {
       setProfileLoading(true);
       const { data: profile } = await supabase
         .from('profiles')
-        .select('first_name, last_name, email, phone, department, year, college, gender')
+        .select('first_name, last_name, email, phone, department, year, college')
         .eq('user_id', user.id)
         .maybeSingle();
       if (profile) {
@@ -71,7 +68,6 @@ const Account = () => {
           setYear('');
         }
         setCollege((profile as any).college || '');
-        setGender((profile as any).gender || '');
         setInitialProfile({
           first_name: (profile as any).first_name || '',
           last_name: (profile as any).last_name || '',
@@ -80,7 +76,6 @@ const Account = () => {
           department: (profile as any).department || '',
           year: (profile as any).year || '',
           college: (profile as any).college || '',
-          gender: (profile as any).gender || '',
         });
       } else {
         setEmail(user.email || '');
@@ -92,7 +87,6 @@ const Account = () => {
           department: '',
           year: '',
           college: '',
-          gender: '',
         });
       }
 
@@ -109,7 +103,6 @@ const Account = () => {
         if (norm.custom) setCustomYear(norm.custom);
       }
       if (!college && meta.college) setCollege(meta.college);
-      if (!gender && meta.gender) setGender(meta.gender);
 
       setProfileLoading(false);
     };
@@ -120,10 +113,8 @@ const Account = () => {
     if (!user) return;
     try {
       setLoading(true);
-      // Update profiles table
       const resolvedDepartment = department === 'Other' ? customDepartment : department;
       const resolvedYear = year === 'Other' ? customYear : year;
-      const resolvedGender = gender === 'Other' ? customGender : gender;
 
       const upsertPayload: any = {
         user_id: user.id,
@@ -134,19 +125,16 @@ const Account = () => {
         department: resolvedDepartment,
         year: resolvedYear,
         college,
-        gender: resolvedGender,
         updated_at: new Date().toISOString(),
       };
       const { error: upsertErr } = await supabase.from('profiles').upsert(upsertPayload, { onConflict: 'user_id' });
       if (upsertErr) throw upsertErr;
 
-      // If email changed, update auth email
       if (email && email !== (user.email || '')) {
         const { error: authErr } = await supabase.auth.updateUser({ email });
         if (authErr) throw authErr;
       }
 
-      // Also mirror core fields into auth user_metadata for consistency
       await supabase.auth.updateUser({
         data: {
           first_name: firstName,
@@ -155,7 +143,6 @@ const Account = () => {
           department: resolvedDepartment,
           year: resolvedYear,
           college,
-          gender: resolvedGender,
         }
       });
 
@@ -179,7 +166,6 @@ const Account = () => {
     }
     try {
       setLoading(true);
-      // Supabase does not require current password for update when session is valid
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       setCurrentPassword('');
@@ -202,10 +188,8 @@ const Account = () => {
     setDepartment(initialProfile.department || '');
     setYear(initialProfile.year || '');
     setCollege(initialProfile.college || '');
-    setGender(initialProfile.gender || '');
     setCustomDepartment('');
     setCustomYear('');
-    setCustomGender('');
   };
 
   const handleCancelPassword = () => {
@@ -288,21 +272,6 @@ const Account = () => {
             <div className="space-y-2">
               <Label htmlFor="college">College</Label>
               <Input id="college" value={college} onChange={(e) => setCollege(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Gender</Label>
-              <Select value={gender} onValueChange={setGender}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Male">Male</SelectItem>
-                  <SelectItem value="Female">Female</SelectItem>
-                </SelectContent>
-              </Select>
-              {gender === 'Other' && (
-                <Input placeholder="Type your gender" value={customGender} onChange={(e) => setCustomGender(e.target.value)} />
-              )}
             </div>
             <div className="sm:col-span-2 flex gap-2 justify-end pt-2">
               <Button variant="ghost" onClick={handleCancelProfile} disabled={loading}>

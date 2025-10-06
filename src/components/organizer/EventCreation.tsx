@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useEvents } from '@/hooks/useEvents';
 import { formatDateDMY } from '@/lib/utils';
 
-export default function EventCreation() {
+export default function EventCreation({ filterDepartment }: { filterDepartment?: string }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { events, refetchEvents } = useEvents();
@@ -559,6 +559,11 @@ export default function EventCreation() {
     }
   };
 
+  // If filterDepartment is provided, only show events for that department
+  const filteredEvents = (filterDepartment && Array.isArray(events))
+    ? events.filter((e: any) => (e.department || '') === filterDepartment)
+    : events;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -997,7 +1002,7 @@ export default function EventCreation() {
         <CardHeader>
           <CardTitle className="flex items-center">
             <Calendar className="w-5 h-5 mr-2" />
-            Events ({events.length})
+            Events ({filteredEvents.length})
           </CardTitle>
           <CardDescription>
             Manage and view all events
@@ -1005,14 +1010,14 @@ export default function EventCreation() {
         </CardHeader>
         <CardContent className="p-3 sm:p-6">
           <div className="space-y-3 sm:space-y-4 max-h-[70vh] overflow-y-auto">
-            {events.length === 0 ? (
+            {filteredEvents.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No events created yet</p>
                 <p className="text-sm">Click "Create Event" to get started</p>
               </div>
             ) : (
-              events.map((event) => {
+              filteredEvents.map((event) => {
                 const registrationCount = eventRegistrations[event.id] || 0;
                 
                 // Get registration status from localStorage

@@ -9,15 +9,14 @@ import { ClipboardList, QrCode, CheckCircle, Clock, MapPin, Users } from 'lucide
 import Navigation from '@/components/layout/Navigation';
 import { format } from 'date-fns';
 import QRScanner from '@/components/ui/QRScanner';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Assignment {
   id: string;
   task: string;
-  zone?: string;
-  status: string;
+  status: 'assigned' | 'in-progress' | 'completed';
   assigned_at: string;
-  started_at?: string;
-  completed_at?: string;
+  zone?: string;
   notes?: string;
   event: {
     id: string;
@@ -33,6 +32,10 @@ export default function VolunteerDashboard() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('tasks');
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [eventDetails, setEventDetails] = useState<any | null>(null);
+  const [eventCoordinators, setEventCoordinators] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -42,17 +45,27 @@ export default function VolunteerDashboard() {
 
   const fetchAssignments = async () => {
     try {
-      const { data, error } = await supabase
-        .from('volunteer_assignments')
-        .select(`
-          *,
-          event:events(id, title, start_date, location)
-        `)
-        .eq('volunteer_id', user?.id)
-        .order('assigned_at', { ascending: false });
+      // Read assignments from event_volunteers created by staff/coordinators
+      const { data, error } = await (supabase as any)
+        .from('event_volunteers')
+        .select('id, created_at, events:events(id, title, start_date, location)')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setAssignments(data || []);
+      const mapped: Assignment[] = (data || []).map((row: any) => ({
+        id: String(row.id),
+        task: `Assist: ${row.events?.title || 'Event'}`,
+        status: 'assigned',
+        assigned_at: row.created_at,
+        event: {
+          id: row.events?.id,
+          title: row.events?.title,
+          start_date: row.events?.start_date,
+          location: row.events?.location,
+        },
+      }));
+      setAssignments(mapped);
     } catch (error) {
       console.error('Error fetching assignments:', error);
       toast({
@@ -64,6 +77,38 @@ export default function VolunteerDashboard() {
       setLoading(false);
     }
   };
+  const openAssignmentDetails = async (assignment: Assignment) => {
+    setSelectedAssignment(assignment);
+    setDetailsOpen(true);
+    try {
+      // Load fresh event details
+      const { data: ev } = await (supabase as any)
+        .from('events')
+        .select('*')
+        .eq('id', assignment.event.id)
+        .maybeSingle();
+      setEventDetails(ev || assignment.event);
+
+      // Load coordinators for this event
+      const { data: ec } = await (supabase as any)
+        .from('event_coordinators')
+        .select('user_id')
+        .eq('event_id', assignment.event.id);
+      const ids = (ec || []).map((r: any) => r.user_id);
+      if (ids.length > 0) {
+        const { data: profs } = await (supabase as any)
+          .from('profiles')
+          .select('user_id, first_name, last_name, email, phone')
+          .in('user_id', ids);
+        setEventCoordinators(profs || []);
+      } else {
+        setEventCoordinators([]);
+      }
+    } catch (e) {
+      console.error('Failed loading assignment details', e);
+    }
+  };
+
 
   const updateAssignmentStatus = async (id: string, status: string) => {
     try {
@@ -120,7 +165,7 @@ export default function VolunteerDashboard() {
     );
   };
 
-  const activeAssignments = assignments.filter(a => a.status !== 'completed' && a.status !== 'cancelled');
+  const activeAssignments = assignments.filter(a => a.status !== 'completed');
   const completedAssignments = assignments.filter(a => a.status === 'completed');
 
   if (loading) {
@@ -216,7 +261,7 @@ export default function VolunteerDashboard() {
               </Card>
             ) : (
               activeAssignments.map((assignment) => (
-                <Card key={assignment.id}>
+                <Card key={assignment.id} onClick={() => openAssignmentDetails(assignment)} className="cursor-pointer">
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
@@ -236,25 +281,7 @@ export default function VolunteerDashboard() {
                       </div>
                     )}
                     
-                    <div className="flex gap-2">
-                      {assignment.status === 'assigned' && (
-                        <Button 
-                          onClick={() => updateAssignmentStatus(assignment.id, 'in-progress')}
-                          size="sm"
-                        >
-                          Start Task
-                        </Button>
-                      )}
-                      {assignment.status === 'in-progress' && (
-                        <Button 
-                          onClick={() => updateAssignmentStatus(assignment.id, 'completed')}
-                          size="sm"
-                          variant="outline"
-                        >
-                          Mark Complete
-                        </Button>
-                      )}
-                    </div>
+                    {/* Completion workflow is not enabled for event_volunteers mapping */}
 
                     {assignment.notes && (
                       <p className="text-sm text-muted-foreground border-l-2 border-primary pl-4">
@@ -294,6 +321,60 @@ export default function VolunteerDashboard() {
             <QRScanner onScanSuccess={fetchAssignments} />
           </TabsContent>
         </Tabs>
+        
+        {/* Assignment Details Dialog */}
+        <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+          <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Assignment Details</DialogTitle>
+              <DialogDescription>
+                {selectedAssignment?.event.title || 'Event'} • {selectedAssignment ? format(new Date(selectedAssignment.assigned_at), 'PPP p') : ''}
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedAssignment && (
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg border bg-muted/30">
+                  <div className="font-medium">Event</div>
+                  <div className="text-sm text-muted-foreground">
+                    <div>{eventDetails?.title || selectedAssignment.event.title}</div>
+                    <div>{eventDetails?.location || selectedAssignment.event.location}</div>
+                    <div>{format(new Date(eventDetails?.start_date || selectedAssignment.event.start_date), 'PPP p')}</div>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg border bg-muted/30">
+                  <div className="font-medium">Your Task</div>
+                  <div className="text-sm text-muted-foreground">
+                    <div>{selectedAssignment.task}</div>
+                    <div>Status: {selectedAssignment.status.replace('-', ' ')}</div>
+                    <div>Assigned: {format(new Date(selectedAssignment.assigned_at), 'PPP p')}</div>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg border bg-muted/30">
+                  <div className="font-medium mb-1">Event Coordinators</div>
+                  {eventCoordinators.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">No coordinators listed</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {eventCoordinators.map((c) => (
+                        <div key={c.user_id} className="flex items-center justify-between text-sm">
+                          <span className="truncate">{`${c.first_name || ''} ${c.last_name || ''}`.trim() || c.phone || 'Coordinator'}</span>
+                          <span className="text-muted-foreground ml-2 truncate">{c.phone || '—'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end">
+                  <Button variant="outline" onClick={() => setDetailsOpen(false)}>Close</Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
         </div>
       </div>
     </div>
