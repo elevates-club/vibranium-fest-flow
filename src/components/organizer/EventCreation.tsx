@@ -737,7 +737,7 @@ export default function EventCreation() {
                     <SelectItem value="electronics">Electronics</SelectItem>
                     <SelectItem value="mechanical">Mechanical</SelectItem>
                     <SelectItem value="civil">Civil</SelectItem>
-                    <SelectItem value="electrical">Electrical</SelectItem>
+                    <SelectItem value="safety-fire">Safety & Fire Engineering</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
