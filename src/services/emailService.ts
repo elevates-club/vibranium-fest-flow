@@ -1,19 +1,20 @@
 import nodemailer from 'nodemailer';
 
-// Email configuration
+// Gmail SMTP Configuration
 const emailConfig = {
-  // For development/testing - using Gmail SMTP
-  // For production, use a proper email service like SendGrid, Mailgun, etc.
   host: 'smtp.gmail.com',
   port: 587,
   secure: false, // true for 465, false for other ports
   auth: {
-    user: process.env.EMAIL_USER || 'elevates@ekc.edu.in',
-    pass: process.env.EMAIL_PASS || 'jayd okdu vipl enki', // Use App Password for Gmail
+    user: process.env.EMAIL_USER, // Your Gmail address
+    pass: process.env.EMAIL_PASS, // Your Gmail App Password
   },
+  tls: {
+    rejectUnauthorized: false
+  }
 };
 
-// Create transporter
+// Create transporter with Gmail configuration
 const transporter = nodemailer.createTransport(emailConfig);
 
 // Email templates
@@ -261,6 +262,10 @@ export const emailService = {
     options?: { qrDataURL?: string; participantId?: string }
   ) => {
     try {
+      // Verify transporter configuration
+      await transporter.verify();
+      console.log('Gmail SMTP connection verified successfully');
+
       const template = emailTemplates.eventRegistration(eventDetails, userDetails, { participantId: options?.participantId });
       
       const mailOptions: any = {
@@ -269,11 +274,17 @@ export const emailService = {
         subject: template.subject,
         html: template.html,
         text: template.text,
+        // Gmail-specific headers
+        headers: {
+          'X-Mailer': 'Vibranium 5.0 Event System',
+          'X-Priority': '3',
+        },
       };
 
+      // Add QR code as attachment if provided
       if (options?.qrDataURL) {
         mailOptions.attachments = [{
-          filename: 'vibranium-pass.png',
+          filename: 'vibranium-digital-pass.png',
           content: options.qrDataURL.split(',')[1],
           encoding: 'base64',
           cid: 'qrcode'
@@ -281,22 +292,90 @@ export const emailService = {
       }
 
       const result = await transporter.sendMail(mailOptions);
-      console.log('Event registration email sent:', result.messageId);
+      console.log('Event registration email sent successfully:', result.messageId);
       return { success: true, messageId: result.messageId };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending event registration email:', error);
-      return { success: false, error: error.message };
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to send email';
+      if (error.code === 'EAUTH') {
+        errorMessage = 'Gmail authentication failed. Please check your app password.';
+      } else if (error.code === 'ECONNECTION') {
+        errorMessage = 'Failed to connect to Gmail SMTP server.';
+      } else if (error.code === 'EMESSAGE') {
+        errorMessage = 'Invalid email message format.';
+      }
+      
+      return { success: false, error: errorMessage };
     }
   },
 
-  // Test email configuration
+  // Test Gmail email configuration
   testEmailConnection: async () => {
     try {
       await transporter.verify();
-      console.log('Email server connection verified');
-      return { success: true };
-    } catch (error) {
-      console.error('Email server connection failed:', error);
+      console.log('Gmail SMTP connection verified successfully');
+      return { success: true, message: 'Gmail SMTP connection is working' };
+    } catch (error: any) {
+      console.error('Gmail SMTP connection failed:', error);
+      
+      let errorMessage = 'Gmail SMTP connection failed';
+      if (error.code === 'EAUTH') {
+        errorMessage = 'Gmail authentication failed. Please check your credentials and app password.';
+      } else if (error.code === 'ECONNECTION') {
+        errorMessage = 'Cannot connect to Gmail SMTP server. Check your internet connection.';
+      }
+      
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  // Send test email
+  sendTestEmail: async (toEmail: string) => {
+    try {
+      await transporter.verify();
+      
+      const mailOptions = {
+        from: `"Vibranium 5.0 Test" <${emailConfig.auth.user}>`,
+        to: toEmail,
+        subject: '🧪 Vibranium 5.0 - Email Service Test',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #667eea;">✅ Email Service Test Successful!</h2>
+            <p>This is a test email from Vibranium 5.0 event management system.</p>
+            <p><strong>Configuration:</strong></p>
+            <ul>
+              <li>SMTP Host: ${emailConfig.host}</li>
+              <li>Port: ${emailConfig.port}</li>
+              <li>Secure: ${emailConfig.secure}</li>
+              <li>From: ${emailConfig.auth.user}</li>
+            </ul>
+            <p style="margin-top: 30px; color: #666;">
+              If you received this email, your Gmail SMTP configuration is working correctly!
+            </p>
+          </div>
+        `,
+        text: `
+          Email Service Test Successful!
+          
+          This is a test email from Vibranium 5.0 event management system.
+          
+          Configuration:
+          - SMTP Host: ${emailConfig.host}
+          - Port: ${emailConfig.port}
+          - Secure: ${emailConfig.secure}
+          - From: ${emailConfig.auth.user}
+          
+          If you received this email, your Gmail SMTP configuration is working correctly!
+        `
+      };
+
+      const result = await transporter.sendMail(mailOptions);
+      console.log('Test email sent successfully:', result.messageId);
+      return { success: true, messageId: result.messageId };
+    } catch (error: any) {
+      console.error('Error sending test email:', error);
       return { success: false, error: error.message };
     }
   }

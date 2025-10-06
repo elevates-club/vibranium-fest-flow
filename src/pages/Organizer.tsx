@@ -76,6 +76,20 @@ const Organizer = () => {
   const [capacityAlerts, setCapacityAlerts] = useState<{ id: string; title: string; ratio: number; registered: number; capacity: number }[]>([]);
   const [noShowRates, setNoShowRates] = useState<{ id: string; title: string; rate: number; registrations: number; checkins: number }[]>([]);
   
+  // Email tab state
+  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [testEmail, setTestEmail] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [emailMessage, setEmailMessage] = useState('');
+
+  // Load email service status from localStorage
+  useEffect(() => {
+    const savedEmailStatus = localStorage.getItem('emailServiceEnabled');
+    if (savedEmailStatus !== null) {
+      setEmailEnabled(savedEmailStatus === 'true');
+    }
+  }, []);
 
   const fetchRecentEvents = useCallback(async () => {
     try {
@@ -470,6 +484,126 @@ const Organizer = () => {
     }
   };
 
+  // Email functions
+  const testEmailConnection = async () => {
+    setEmailLoading(true);
+    setEmailStatus('idle');
+    setEmailMessage('');
+    
+    try {
+      const response = await fetch('/api/test-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'test-connection'
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setEmailStatus('success');
+        setEmailMessage('Gmail SMTP connection is working correctly!');
+        toast({
+          title: "Email Service Ready",
+          description: "Gmail SMTP connection verified successfully.",
+        });
+      } else {
+        setEmailStatus('error');
+        setEmailMessage(result.error || 'Connection test failed');
+        toast({
+          title: "Email Connection Failed",
+          description: result.error || 'Failed to connect to Gmail SMTP',
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      setEmailStatus('error');
+      setEmailMessage('Network error: ' + error.message);
+      toast({
+        title: "Email Test Failed",
+        description: "Failed to test email connection",
+        variant: "destructive",
+      });
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const sendTestEmail = async () => {
+    if (!testEmail.trim()) {
+      toast({
+        title: "Email Required",
+        description: "Please enter a test email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setEmailLoading(true);
+    setEmailStatus('idle');
+    setEmailMessage('');
+    
+    try {
+      const response = await fetch('/api/test-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'send-test-email',
+          testEmail: testEmail.trim()
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setEmailStatus('success');
+        setEmailMessage(`Test email sent successfully to ${testEmail}!`);
+        toast({
+          title: "Test Email Sent",
+          description: `Check ${testEmail} for the test email`,
+        });
+      } else {
+        setEmailStatus('error');
+        setEmailMessage(result.error || 'Failed to send test email');
+        toast({
+          title: "Email Send Failed",
+          description: result.error || 'Failed to send test email',
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      setEmailStatus('error');
+      setEmailMessage('Network error: ' + error.message);
+      toast({
+        title: "Email Test Failed",
+        description: "Failed to send test email",
+        variant: "destructive",
+      });
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const toggleEmailService = () => {
+    const newStatus = !emailEnabled;
+    setEmailEnabled(newStatus);
+    
+    // Store in localStorage for persistence
+    localStorage.setItem('emailServiceEnabled', newStatus.toString());
+    
+    toast({
+      title: newStatus ? "Email Service Enabled" : "Email Service Disabled",
+      description: newStatus 
+        ? "Registration emails will be sent to users" 
+        : "Registration emails will not be sent",
+    });
+  };
+
   const departments: any[] = [];
 
   return (
@@ -517,7 +651,7 @@ const Organizer = () => {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
-            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 gap-1 sm:gap-2 h-auto">
+            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 gap-1 sm:gap-2 h-auto">
               <TabsTrigger value="overview" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
                 <span className="hidden sm:inline">Overview</span>
                 <span className="sm:hidden">Overview</span>
@@ -529,6 +663,10 @@ const Organizer = () => {
               <TabsTrigger value="participants" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
                 <span className="hidden sm:inline">Participants</span>
                 <span className="sm:hidden">Users</span>
+              </TabsTrigger>
+              <TabsTrigger value="email" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
+                <span className="hidden sm:inline">Email</span>
+                <span className="sm:hidden">Mail</span>
               </TabsTrigger>
               <TabsTrigger value="qr-management" className="text-xs sm:text-sm py-2 px-2 sm:px-3">
                 <span className="hidden sm:inline">QR Codes</span>
@@ -616,6 +754,152 @@ const Organizer = () => {
                         ))}
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="email">
+              <Card>
+                <CardHeader className="p-3 sm:p-6">
+                  <CardTitle className="text-lg sm:text-xl flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Mail className="w-5 h-5 mr-2" />
+                      Email Service Management
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        emailEnabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {emailEnabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6 space-y-6">
+                  {/* Email Service Toggle */}
+                  <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                    <div>
+                      <h3 className="font-medium">Email Service Status</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {emailEnabled 
+                          ? 'Registration emails will be sent to users' 
+                          : 'Registration emails are disabled'
+                        }
+                      </p>
+                    </div>
+                    <Button
+                      onClick={toggleEmailService}
+                      variant={emailEnabled ? "destructive" : "default"}
+                      size="sm"
+                    >
+                      {emailEnabled ? 'Disable' : 'Enable'} Email Service
+                    </Button>
+                  </div>
+
+                  {/* Test Email Connection */}
+                  <div className="space-y-4">
+                    <h3 className="font-medium flex items-center">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Test Email Connection
+                    </h3>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Button
+                        onClick={testEmailConnection}
+                        disabled={emailLoading}
+                        variant="outline"
+                        className="flex-1 sm:flex-none"
+                      >
+                        {emailLoading ? 'Testing...' : 'Test Gmail Connection'}
+                      </Button>
+                      {emailStatus !== 'idle' && (
+                        <div className={`flex-1 p-3 rounded-lg text-sm ${
+                          emailStatus === 'success' 
+                            ? 'bg-green-100 text-green-800 border border-green-200' 
+                            : 'bg-red-100 text-red-800 border border-red-200'
+                        }`}>
+                          <div className="flex items-center">
+                            {emailStatus === 'success' ? (
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                            ) : (
+                              <Settings className="w-4 h-4 mr-2" />
+                            )}
+                            {emailMessage}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Send Test Email */}
+                  <div className="space-y-4">
+                    <h3 className="font-medium flex items-center">
+                      <Mail className="w-4 h-4 mr-2" />
+                      Send Test Email
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Input
+                          type="email"
+                          placeholder="Enter test email address"
+                          value={testEmail}
+                          onChange={(e) => setTestEmail(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button
+                          onClick={sendTestEmail}
+                          disabled={emailLoading || !testEmail.trim()}
+                          className="sm:w-auto"
+                        >
+                          {emailLoading ? 'Sending...' : 'Send Test Email'}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Enter an email address to test the email service functionality
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Email Configuration Info */}
+                  <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
+                    <h4 className="font-medium text-blue-900 mb-2">Email Configuration</h4>
+                    <div className="text-sm text-blue-800 space-y-1">
+                      <p><strong>SMTP Host:</strong> smtp.gmail.com</p>
+                      <p><strong>Port:</strong> 587 (STARTTLS)</p>
+                      <p><strong>Authentication:</strong> Gmail App Password</p>
+                      <p><strong>Daily Limit:</strong> 500 emails (Gmail free)</p>
+                    </div>
+                  </div>
+
+                  {/* Email Service Features */}
+                  <div className="space-y-3">
+                    <h3 className="font-medium">Email Service Features</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="p-3 border rounded-lg">
+                        <h4 className="font-medium text-sm mb-1">Registration Confirmations</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Automatic emails sent when users register for events
+                        </p>
+                      </div>
+                      <div className="p-3 border rounded-lg">
+                        <h4 className="font-medium text-sm mb-1">QR Code Attachments</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Digital passes with QR codes attached to emails
+                        </p>
+                      </div>
+                      <div className="p-3 border rounded-lg">
+                        <h4 className="font-medium text-sm mb-1">Event Details</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Complete event information in email templates
+                        </p>
+                      </div>
+                      <div className="p-3 border rounded-lg">
+                        <h4 className="font-medium text-sm mb-1">Professional Design</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Branded HTML email templates with responsive design
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -749,14 +1033,14 @@ const Organizer = () => {
                           <div key={dept.name} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gradient-subtle rounded-lg border border-border gap-3 sm:gap-4">
                             <div className="min-w-0 flex-1">
                               <div className="font-semibold text-foreground text-sm sm:text-base truncate">{dept.name}</div>
-                            </div>
+                          </div>
                             <div className="flex items-center justify-between sm:justify-end space-x-6 text-xs sm:text-sm">
                             <div className="text-center">
                                 <div className="font-bold text-secondary text-sm sm:text-base">{dept.participants}</div>
                               <div className="text-muted-foreground">Participants</div>
-                              </div>
                             </div>
                           </div>
+                        </div>
                         ))
                       )}
                     </div>
@@ -850,7 +1134,7 @@ const Organizer = () => {
                         <div className="p-4 rounded-lg bg-gradient-subtle border border-border">
                           <div className="text-xs text-muted-foreground mb-1">Views</div>
                           <div className="text-2xl font-bold">{funnel.views ?? '—'}</div>
-                        </div>
+                  </div>
                         <div className="p-4 rounded-lg bg-gradient-subtle border border-border">
                           <div className="text-xs text-muted-foreground mb-1">Registrations</div>
                           <div className="text-2xl font-bold">{funnel.registrations}</div>
@@ -861,8 +1145,8 @@ const Organizer = () => {
                         </div>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                </CardContent>
+              </Card>
 
                 {/* Breakdowns */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1095,7 +1379,7 @@ const Organizer = () => {
                 <div key={r.events?.id + r.registration_date} className="p-3 bg-gradient-subtle rounded-lg border border-border">
                   <div className="font-medium truncate">{r.events?.title || 'Event'}</div>
                   <div className="text-xs text-muted-foreground">{new Date(r.registration_date).toLocaleDateString()} • {r.checked_in ? 'Checked in' : 'Registered'}</div>
-                </div>
+    </div>
               ))
             )}
           </div>

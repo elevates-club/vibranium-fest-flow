@@ -301,6 +301,18 @@ const Events = () => {
 
   const sendRegistrationEmail = async (event: any, userData: any) => {
     try {
+      // Check if email service is enabled
+      const emailServiceEnabled = localStorage.getItem('emailServiceEnabled') !== 'false';
+      
+      if (!emailServiceEnabled) {
+        console.log('Email service is disabled, skipping email send');
+        toast({
+          title: "Registration Successful",
+          description: "Your registration is confirmed. Email notifications are currently disabled.",
+        });
+        return;
+      }
+
       // Try to fetch participant QR/pass data
       let qrDataURL: string | undefined;
       let participantId: string | undefined;
