@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Calendar, MapPin, Users, DollarSign, Star, Edit, Trash2, Lock, Unlock, Eye, Mail, Phone, GraduationCap, Clock, CheckCircle, Maximize2, Minimize2, Eye as EyeIcon } from 'lucide-react';
+import { Plus, Calendar, MapPin, Users, DollarSign, Star, Edit, Trash2, Lock, Unlock, Eye, Mail, Phone, GraduationCap, Clock, CheckCircle, Maximize2, Minimize2, Eye as EyeIcon, X, Settings } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useEvents } from '@/hooks/useEvents';
 import { formatDateDMY } from '@/lib/utils';
@@ -94,6 +94,72 @@ export default function EventCreation() {
   const [selectedEventForMembers, setSelectedEventForMembers] = useState<any>(null);
   const [registeredMembers, setRegisteredMembers] = useState<any[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
+  
+  // Custom selection options state
+  const [customSelections, setCustomSelections] = useState<Array<{
+    id: string;
+    label: string;
+    type: 'select' | 'radio' | 'checkbox';
+    options: string[];
+    required: boolean;
+  }>>([]);
+  
+  const [showCustomSelections, setShowCustomSelections] = useState(false);
+  
+  // Custom selection functions
+  const addCustomSelection = () => {
+    const newSelection = {
+      id: `selection_${Date.now()}`,
+      label: '',
+      type: 'select' as const,
+      options: [''],
+      required: false
+    };
+    setCustomSelections([...customSelections, newSelection]);
+  };
+  
+  const updateCustomSelection = (id: string, field: string, value: any) => {
+    setCustomSelections(prev => prev.map(selection => 
+      selection.id === id ? { ...selection, [field]: value } : selection
+    ));
+  };
+  
+  const removeCustomSelection = (id: string) => {
+    setCustomSelections(prev => prev.filter(selection => selection.id !== id));
+  };
+  
+  const addOptionToSelection = (selectionId: string) => {
+    setCustomSelections(prev => prev.map(selection => 
+      selection.id === selectionId 
+        ? { ...selection, options: [...selection.options, ''] }
+        : selection
+    ));
+  };
+  
+  const updateOptionInSelection = (selectionId: string, optionIndex: number, value: string) => {
+    setCustomSelections(prev => prev.map(selection => 
+      selection.id === selectionId 
+        ? { 
+            ...selection, 
+            options: selection.options.map((option, index) => 
+              index === optionIndex ? value : option
+            )
+          }
+        : selection
+    ));
+  };
+  
+  const removeOptionFromSelection = (selectionId: string, optionIndex: number) => {
+    setCustomSelections(prev => prev.map(selection => 
+      selection.id === selectionId 
+        ? { 
+            ...selection, 
+            options: selection.options.filter((_, index) => index !== optionIndex)
+          }
+        : selection
+    ));
+  };
+  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -174,6 +240,7 @@ export default function EventCreation() {
           registration_fee: formData.registration_fee,
           points_reward: formData.points_reward || 0, // Default to 0 if not provided
           department: formData.department,
+          custom_selection_options: customSelections.length > 0 ? customSelections : null,
           updated_at: new Date().toISOString()
         };
 
@@ -217,6 +284,7 @@ export default function EventCreation() {
           registration_fee: formData.registration_fee,
           points_reward: formData.points_reward || 0, // Default to 0 if not provided
           department: formData.department,
+          custom_selection_options: customSelections.length > 0 ? customSelections : null,
           created_by: user.id,
           created_at: new Date().toISOString(),
           status: 'upcoming'
@@ -258,6 +326,8 @@ export default function EventCreation() {
       department: '',
       registration_closed: false
     });
+    setCustomSelections([]);
+    setShowCustomSelections(false);
     setIsDialogOpen(false);
     setIsEditMode(false);
     setEditingEvent(null);
@@ -268,7 +338,7 @@ export default function EventCreation() {
     try {
       const { data: registrations, error: registrationsError } = await supabase
         .from('event_registrations')
-        .select('*')
+        .select('*, custom_answers')
         .eq('event_id', eventId)
         .order('registration_date', { ascending: false });
 
@@ -287,7 +357,7 @@ export default function EventCreation() {
         return;
       }
 
-      const userIds = registrations.map(reg => reg.user_id);
+      const userIds = registrations.map((reg: any) => reg.user_id);
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, first_name, last_name, email, phone, department, year, college')
@@ -303,7 +373,7 @@ export default function EventCreation() {
         return;
       }
 
-      const membersWithProfiles = registrations.map(registration => {
+      const membersWithProfiles = registrations.map((registration: any) => {
         const profile = profiles?.find(p => p.user_id === registration.user_id);
         return {
           ...registration,
@@ -351,6 +421,16 @@ export default function EventCreation() {
       department: event.department,
       registration_closed: eventStatus?.registrationClosed || false
     });
+    
+    // Load custom selections if they exist
+    if (event.custom_selection_options && Array.isArray(event.custom_selection_options)) {
+      setCustomSelections(event.custom_selection_options);
+      setShowCustomSelections(event.custom_selection_options.length > 0);
+    } else {
+      setCustomSelections([]);
+      setShowCustomSelections(false);
+    }
+    
     setIsDialogOpen(true);
   };
 
@@ -507,7 +587,7 @@ export default function EventCreation() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">Description</Label>
                   <div className="flex items-center gap-2">
                     <Button type="button" variant="outline" size="sm" onClick={() => setShowDescPreview(v => !v)}>
                       <EyeIcon className="w-4 h-4 mr-2" /> {showDescPreview ? 'Hide Preview' : 'Preview'}
@@ -520,7 +600,7 @@ export default function EventCreation() {
                 <div className="rounded-md border">
                   <ReactQuill
                     theme="snow"
-                    value={formData.description}
+                  value={formData.description}
                     onChange={(html) => setFormData({ ...formData, description: html })}
                     modules={{
                       toolbar: [
@@ -551,14 +631,14 @@ export default function EventCreation() {
                 <div className="space-y-2">
                   <Label htmlFor="start_date">Start Date & Time</Label>
                   <div className="relative">
-                    <Input
-                      id="start_date"
+                  <Input
+                    id="start_date"
                       ref={startInputRef}
-                      type="datetime-local"
-                      value={formData.start_date}
-                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                      required
-                    />
+                    type="datetime-local"
+                    value={formData.start_date}
+                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                    required
+                  />
                     <button
                       type="button"
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
@@ -575,12 +655,12 @@ export default function EventCreation() {
                 <div className="space-y-2">
                   <Label htmlFor="end_date">End Date & Time (Optional)</Label>
                   <div className="relative">
-                    <Input
-                      id="end_date"
+                  <Input
+                    id="end_date"
                       ref={endInputRef}
-                      type="datetime-local"
-                      value={formData.end_date}
-                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                    type="datetime-local"
+                    value={formData.end_date}
+                    onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                     />
                     <button
                       type="button"
@@ -679,6 +759,145 @@ export default function EventCreation() {
                   </Select>
                 </div>
               )}
+
+              {/* Custom Selection Options */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Custom Selection Options (Optional)</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowCustomSelections(!showCustomSelections)}
+                    className="flex items-center gap-2"
+                  >
+                    <Settings className="w-4 h-4" />
+                    {showCustomSelections ? 'Hide' : 'Show'} Custom Fields
+                  </Button>
+                </div>
+                
+                {showCustomSelections && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Add custom questions/options for event registration (like Google Forms)
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addCustomSelection}
+                        className="flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Field
+                      </Button>
+                    </div>
+                    
+                    {customSelections.map((selection, index) => (
+                      <div key={selection.id} className="p-3 border rounded-lg bg-background space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-sm">Field {index + 1}</h4>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeCustomSelection(selection.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label>Question Label</Label>
+                            <Input
+                              value={selection.label}
+                              onChange={(e) => updateCustomSelection(selection.id, 'label', e.target.value)}
+                              placeholder="e.g., What's your experience level?"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label>Field Type</Label>
+                            <Select
+                              value={selection.type}
+                              onValueChange={(value) => updateCustomSelection(selection.id, 'type', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="select">Dropdown</SelectItem>
+                                <SelectItem value="radio">Radio Buttons</SelectItem>
+                                <SelectItem value="checkbox">Checkboxes</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label>Options</Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addOptionToSelection(selection.id)}
+                            >
+                              <Plus className="w-4 h-4 mr-1" />
+                              Add Option
+                            </Button>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            {selection.options.map((option, optionIndex) => (
+                              <div key={optionIndex} className="flex items-center gap-2">
+                                <Input
+                                  value={option}
+                                  onChange={(e) => updateOptionInSelection(selection.id, optionIndex, e.target.value)}
+                                  placeholder={`Option ${optionIndex + 1}`}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeOptionFromSelection(selection.id, optionIndex)}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`required-${selection.id}`}
+                            checked={selection.required}
+                            onChange={(e) => updateCustomSelection(selection.id, 'required', e.target.checked)}
+                            className="rounded"
+                          />
+                          <Label htmlFor={`required-${selection.id}`} className="text-sm">
+                            Required field
+                          </Label>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {customSelections.length === 0 && (
+                      <div className="text-center py-6 text-muted-foreground">
+                        <Settings className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No custom fields added yet</p>
+                        <p className="text-xs">Click "Add Field" to create custom questions for registration</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-3 sm:pt-4">
                 <Button type="button" variant="outline" onClick={resetForm} className="w-full sm:w-auto">
@@ -781,15 +1000,15 @@ export default function EventCreation() {
                           <h3 className="font-semibold text-base sm:text-lg truncate">{event.title}</h3>
                           <div className="flex flex-wrap gap-2">
                             <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground whitespace-nowrap">
-                              {event.category}
+                            {event.category}
                             </span>
-                            {isRegistrationClosed && (
+                          {isRegistrationClosed && (
                               <span className="text-xs px-2 py-1 rounded bg-destructive text-destructive-foreground flex items-center gap-1 whitespace-nowrap">
                                 <Lock className="w-3 h-3" />
-                                Registration Closed
+                              Registration Closed
                               </span>
-                            )}
-                          </div>
+                          )}
+                        </div>
                         </div>
                         <div
                           className="text-sm text-muted-foreground line-clamp-3 break-words [&_*]:inline [&_p]:inline"
@@ -864,7 +1083,7 @@ export default function EventCreation() {
                             {deletingEventId === event.id ? (
                               <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
                             ) : (
-                              <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4" />
                             )}
                           </Button>
                         </div>
@@ -924,6 +1143,11 @@ export default function EventCreation() {
                       <TableHead>Department</TableHead>
                       <TableHead>Year</TableHead>
                       <TableHead>College</TableHead>
+                      {selectedEventForMembers?.custom_selection_options && selectedEventForMembers.custom_selection_options.map((field: any) => (
+                        <TableHead key={field.id} className="max-w-xs">
+                          {field.label}
+                        </TableHead>
+                      ))}
                       <TableHead>Status</TableHead>
                       <TableHead>Registered</TableHead>
                     </TableRow>
@@ -956,6 +1180,16 @@ export default function EventCreation() {
                         </TableCell>
                         <TableCell>{member.profiles?.year || 'Not provided'}</TableCell>
                         <TableCell>{member.profiles?.college || 'Not provided'}</TableCell>
+                        {selectedEventForMembers?.custom_selection_options && selectedEventForMembers.custom_selection_options.map((field: any) => (
+                          <TableCell key={field.id} className="max-w-xs text-sm">
+                            {member.custom_answers && member.custom_answers[field.id] 
+                              ? (Array.isArray(member.custom_answers[field.id]) 
+                                  ? member.custom_answers[field.id].join(', ') 
+                                  : member.custom_answers[field.id])
+                              : 'Not answered'
+                            }
+                          </TableCell>
+                        ))}
                         <TableCell>
                           <span className={`text-xs px-2 py-1 rounded ${
                             member.checked_in ? 'bg-primary text-primary-foreground' : 

@@ -38,6 +38,7 @@ const Events = () => {
     customDepartment: '',
     year: ''
   });
+  const [customSelectionAnswers, setCustomSelectionAnswers] = useState<{[key: string]: string | string[]}>({});
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -204,7 +205,45 @@ const Events = () => {
     }
 
     setSelectedEvent(event);
+    
+    // Reset custom selection answers
+    const initialAnswers: {[key: string]: string | string[]} = {};
+    if (event.custom_selection_options && Array.isArray(event.custom_selection_options)) {
+      event.custom_selection_options.forEach((selection: any) => {
+        if (selection.type === 'checkbox') {
+          initialAnswers[selection.id] = [];
+        } else {
+          initialAnswers[selection.id] = '';
+        }
+      });
+    }
+    setCustomSelectionAnswers(initialAnswers);
+    
     setIsRegistrationDialogOpen(true);
+  };
+
+  const handleCustomSelectionChange = (selectionId: string, value: string | string[]) => {
+    setCustomSelectionAnswers(prev => ({
+      ...prev,
+      [selectionId]: value
+    }));
+  };
+
+  const handleCustomCheckboxChange = (selectionId: string, option: string, checked: boolean) => {
+    setCustomSelectionAnswers(prev => {
+      const currentValues = (prev[selectionId] as string[]) || [];
+      if (checked) {
+        return {
+          ...prev,
+          [selectionId]: [...currentValues, option]
+        };
+      } else {
+        return {
+          ...prev,
+          [selectionId]: currentValues.filter(v => v !== option)
+        };
+      }
+    });
   };
 
   const handleRegistrationSubmit = async () => {
@@ -220,7 +259,8 @@ const Events = () => {
         .insert({
           event_id: selectedEvent.id,
           user_id: user.id,
-          status: 'registered'
+          status: 'registered',
+          custom_answers: Object.keys(customSelectionAnswers).length > 0 ? customSelectionAnswers : null
         })
         .select();
 
@@ -643,6 +683,81 @@ const Events = () => {
                 />
               )}
             </div>
+            
+            {/* Custom Selection Fields */}
+            {selectedEvent?.custom_selection_options && selectedEvent.custom_selection_options.length > 0 && (
+              <div className="space-y-4">
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Additional Questions</h3>
+                  {selectedEvent.custom_selection_options.map((selection: any) => (
+                    <div key={selection.id} className="space-y-2 mb-4">
+                      <Label className="text-sm font-medium">
+                        {selection.label}
+                        {selection.required && <span className="text-red-500 ml-1">*</span>}
+                      </Label>
+                      
+                      {selection.type === 'select' && (
+                        <Select
+                          value={customSelectionAnswers[selection.id] as string || ''}
+                          onValueChange={(value) => handleCustomSelectionChange(selection.id, value)}
+                        >
+                          <SelectTrigger className="h-10 sm:h-11">
+                            <SelectValue placeholder="Select an option" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {selection.options.map((option: string, index: number) => (
+                              <SelectItem key={index} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      
+                      {selection.type === 'radio' && (
+                        <div className="space-y-2">
+                          {selection.options.map((option: string, index: number) => (
+                            <div key={index} className="flex items-center space-x-2">
+                              <input
+                                type="radio"
+                                id={`${selection.id}-${index}`}
+                                name={selection.id}
+                                value={option}
+                                checked={(customSelectionAnswers[selection.id] as string) === option}
+                                onChange={(e) => handleCustomSelectionChange(selection.id, e.target.value)}
+                                className="rounded"
+                              />
+                              <Label htmlFor={`${selection.id}-${index}`} className="text-sm">
+                                {option}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {selection.type === 'checkbox' && (
+                        <div className="space-y-2">
+                          {selection.options.map((option: string, index: number) => (
+                            <div key={index} className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id={`${selection.id}-${index}`}
+                                checked={(customSelectionAnswers[selection.id] as string[])?.includes(option) || false}
+                                onChange={(e) => handleCustomCheckboxChange(selection.id, option, e.target.checked)}
+                                className="rounded"
+                              />
+                              <Label htmlFor={`${selection.id}-${index}`} className="text-sm">
+                                {option}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
               </div>
             </div>
           )}
