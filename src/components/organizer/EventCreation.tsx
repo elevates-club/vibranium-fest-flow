@@ -34,6 +34,31 @@ export default function EventCreation() {
   const [showDescPreview, setShowDescPreview] = useState(false);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const descriptionFsRef = useRef<HTMLTextAreaElement>(null);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [staffDept, setStaffDept] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadRoles = async () => {
+      if (!user?.id) return;
+      const { data: roles } = await (supabase as any)
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+      setUserRoles((roles || []).map((r: any) => r.role));
+      if ((roles || []).some((r: any) => r.role === 'staff')) {
+        const { data: es } = await (supabase as any)
+          .from('event_staff')
+          .select('department')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (es?.department) {
+          setStaffDept(es.department);
+          setFormData((prev) => ({ ...prev, department: es.department }));
+        }
+      }
+    };
+    loadRoles();
+  }, [user]);
 
   const applyFormat = (
     targetRef: React.RefObject<HTMLTextAreaElement>,
@@ -728,7 +753,7 @@ export default function EventCreation() {
               <div className="space-y-2">
                 <Label htmlFor="department">Department</Label>
                 <Select value={formData.department} onValueChange={(value) => setFormData({ ...formData, department: value })}>
-                  <SelectTrigger>
+                  <SelectTrigger disabled={userRoles.includes('staff')}>
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
@@ -740,6 +765,9 @@ export default function EventCreation() {
                     <SelectItem value="safety-fire">Safety & Fire Engineering</SelectItem>
                   </SelectContent>
                 </Select>
+                {userRoles.includes('staff') && staffDept && (
+                  <p className="text-xs text-muted-foreground">Locked to your department: {staffDept.replace('-', ' ')}</p>
+                )}
               </div>
 
               {isEditMode && (
