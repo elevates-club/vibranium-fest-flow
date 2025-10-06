@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, Users } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, GraduationCap } from 'lucide-react';
 
 interface EventDescriptionModalProps {
   isOpen: boolean;
@@ -15,11 +15,25 @@ interface EventDescriptionModalProps {
     attendees: number;
     maxAttendees: number;
     category: string;
+    department?: string;
   } | null;
 }
 
 const EventDescriptionModal = ({ isOpen, onClose, event }: EventDescriptionModalProps) => {
   if (!event) return null;
+
+  const getDepartmentDisplayName = (dept?: string) => {
+    if (!dept) return undefined;
+    const map: Record<string, string> = {
+      'all': 'All Departments',
+      'computer-science': 'Computer Science',
+      'electronics': 'Electronics',
+      'mechanical': 'Mechanical',
+      'civil': 'Civil',
+      'safety-fire': 'Safety & Fire Engineering',
+    };
+    return map[dept] || dept;
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -57,13 +71,22 @@ const EventDescriptionModal = ({ isOpen, onClose, event }: EventDescriptionModal
                 <span className="ml-2 break-words">{event.location}</span>
               </div>
             </div>
-            <div className="flex items-start sm:items-center text-xs sm:text-sm sm:col-span-2">
+            <div className="flex items-start sm:items-center text-xs sm:text-sm">
               <Users className="w-4 h-4 mr-2 text-primary flex-shrink-0 mt-0.5 sm:mt-0" />
               <div className="min-w-0">
                 <span className="font-medium">Capacity:</span>
                 <span className="ml-2">{event.attendees}/{event.maxAttendees} registered</span>
               </div>
             </div>
+            {getDepartmentDisplayName(event.department) && (
+              <div className="flex items-start sm:items-center text-xs sm:text-sm">
+                <GraduationCap className="w-4 h-4 mr-2 text-primary flex-shrink-0 mt-0.5 sm:mt-0" />
+                <div className="min-w-0">
+                  <span className="font-medium">Department:</span>
+                  <span className="ml-2 break-words">{getDepartmentDisplayName(event.department)}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Description */}
@@ -76,13 +99,10 @@ const EventDescriptionModal = ({ isOpen, onClose, event }: EventDescriptionModal
               />
             </div>
           </div>
-        </div>
 
-        {/* Action Button */}
-        <div className="flex-shrink-0 flex justify-end pt-3 sm:pt-4 border-t">
-          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
-            Close
-          </Button>
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={onClose}>Close</Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

@@ -13,6 +13,7 @@ interface EventCardProps {
   attendees: number;
   maxAttendees: number;
   category: string;
+  department?: string;
   status: 'upcoming' | 'ongoing' | 'completed';
   isRegistered?: boolean;
   registrationClosed?: boolean;
@@ -28,6 +29,7 @@ const EventCard = ({
   attendees,
   maxAttendees,
   category,
+  department,
   status,
   isRegistered = false,
   registrationClosed = false,
@@ -48,13 +50,30 @@ const EventCard = ({
     return (attendees / maxAttendees) * 100;
   };
 
+  const getDepartmentDisplayName = (dept: string) => {
+    const departmentMap: { [key: string]: string } = {
+      'all': 'All Departments',
+      'computer-science': 'Computer Science',
+      'electronics': 'Electronics',
+      'mechanical': 'Mechanical',
+      'civil': 'Civil',
+      'safety-fire': 'Safety & Fire Engineering'
+    };
+    return departmentMap[dept] || dept;
+  };
+
   return (
     <div className="group relative bg-gradient-card rounded-xl p-6 border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-card hover:transform hover:scale-105">
-      {/* Category */}
-      <div className="mb-3">
+      {/* Category and Department */}
+      <div className="mb-3 flex items-center flex-wrap gap-2">
         <span className="text-xs text-muted-foreground font-medium">
           {category}
         </span>
+        {department && department !== 'all' && (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 ml-auto">
+            {getDepartmentDisplayName(department)}
+          </span>
+        )}
       </div>
 
       {/* Title & Description */}
@@ -155,7 +174,8 @@ const EventCard = ({
           location,
           attendees,
           maxAttendees,
-          category
+          category,
+          department
         }}
       />
     </div>

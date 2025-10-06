@@ -551,6 +551,7 @@ const Events = () => {
                     attendees={event.attendees || 0}
                     maxAttendees={event.max_attendees}
                     category={event.category}
+                    department={event.department}
                     status={new Date(event.end_date) < new Date() ? 'completed' : 
                            new Date(event.start_date) <= new Date() ? 'ongoing' : 'upcoming'}
                     isRegistered={isRegistered}
