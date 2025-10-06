@@ -13,6 +13,7 @@ import { useEvents } from '@/hooks/useEvents';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { apiCall } from '@/lib/apiUtils';
 import { 
   Users, 
   Calendar,
@@ -491,11 +492,8 @@ const Organizer = () => {
     setEmailMessage('');
     
     try {
-      const response = await fetch('/api/test-email', {
+      const response = await apiCall('/api/test-email', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           action: 'test-connection'
         })
@@ -547,11 +545,8 @@ const Organizer = () => {
     setEmailMessage('');
     
     try {
-      const response = await fetch('/api/test-email', {
+      const response = await apiCall('/api/test-email', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           action: 'send-test-email',
           testEmail: testEmail.trim()

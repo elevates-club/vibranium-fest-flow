@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { apiCall } from '@/lib/apiUtils';
 import { 
   Search, 
   Filter, 
@@ -330,11 +331,8 @@ const Events = () => {
       }
 
       // Call the email service API
-      const response = await fetch('/api/send-event-registration', {
+      const response = await apiCall('/api/send-event-registration', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           eventDetails: event,
           userDetails: userData,
