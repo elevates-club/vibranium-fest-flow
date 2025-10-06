@@ -1079,7 +1079,7 @@ const Organizer = () => {
             </TabsContent>
 
             <TabsContent value="events">
-              <EventCreation />
+              <EventCreation allowAllDepartments />
             </TabsContent>
 
             <TabsContent value="qr-management">

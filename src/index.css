@@ -82,6 +82,17 @@ All colors MUST be HSL. Futuristic tech aesthetic with purple/blue gradients.
 }
 
 @layer utilities {
+  /* Ensure Quill editor is responsive on small screens */
+  .quill-responsive .ql-toolbar {
+    @apply flex flex-wrap gap-1 sm:gap-2 p-2 sm:p-3 overflow-x-auto;
+  }
+  .quill-responsive .ql-container {
+    @apply min-h-[200px] sm:min-h-[260px];
+  }
+  .quill-responsive .ql-editor {
+    @apply min-h-[180px] sm:min-h-[220px];
+  }
+
   .line-clamp-1 {
     overflow: hidden;
     display: -webkit-box;

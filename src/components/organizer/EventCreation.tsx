@@ -14,12 +14,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Calendar, MapPin, Users, DollarSign, Star, Edit, Trash2, Lock, Unlock, Eye, Mail, Phone, GraduationCap, Clock, CheckCircle, Maximize2, Minimize2, Eye as EyeIcon, X, Settings } from 'lucide-react';
+import { Plus, Calendar, MapPin, Users, IndianRupee, Star, Edit, Trash2, Lock, Unlock, Eye, Mail, Phone, GraduationCap, Clock, CheckCircle, Maximize2, Minimize2, Eye as EyeIcon, X, Settings } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useEvents } from '@/hooks/useEvents';
 import { formatDateDMY } from '@/lib/utils';
 
-export default function EventCreation({ filterDepartment }: { filterDepartment?: string }) {
+export default function EventCreation({ filterDepartment, allowAllDepartments = false }: { filterDepartment?: string; allowAllDepartments?: boolean }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { events, refetchEvents } = useEvents();
@@ -45,7 +45,7 @@ export default function EventCreation({ filterDepartment }: { filterDepartment?:
         .select('role')
         .eq('user_id', user.id);
       setUserRoles((roles || []).map((r: any) => r.role));
-      if ((roles || []).some((r: any) => r.role === 'staff')) {
+      if (!allowAllDepartments && (roles || []).some((r: any) => r.role === 'staff')) {
         const { data: es } = await (supabase as any)
           .from('event_staff')
           .select('department')
@@ -58,7 +58,7 @@ export default function EventCreation({ filterDepartment }: { filterDepartment?:
       }
     };
     loadRoles();
-  }, [user]);
+  }, [user, allowAllDepartments]);
 
   const applyFormat = (
     targetRef: React.RefObject<HTMLTextAreaElement>,
@@ -124,7 +124,7 @@ export default function EventCreation({ filterDepartment }: { filterDepartment?:
   const [customSelections, setCustomSelections] = useState<Array<{
     id: string;
     label: string;
-    type: 'select' | 'radio' | 'checkbox';
+    type: 'select' | 'radio' | 'checkbox' | 'text' | 'image' | 'upi';
     options: string[];
     required: boolean;
   }>>([]);
@@ -183,6 +183,21 @@ export default function EventCreation({ filterDepartment }: { filterDepartment?:
           }
         : selection
     ));
+  };
+
+  // Drag and drop for custom fields
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const onDragStart = (index: number) => setDragIndex(index);
+  const onDragOver = (e: React.DragEvent<HTMLDivElement>) => e.preventDefault();
+  const onDrop = (index: number) => {
+    if (dragIndex === null || dragIndex === index) return;
+    setCustomSelections(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(dragIndex, 1);
+      next.splice(index, 0, moved);
+      return next;
+    });
+    setDragIndex(null);
   };
   
   const [formData, setFormData] = useState({
@@ -627,10 +642,10 @@ export default function EventCreation({ filterDepartment }: { filterDepartment?:
                     </Button>
                   </div>
                 </div>
-                <div className="rounded-md border">
+                <div className="rounded-md border quill-responsive">
                   <ReactQuill
                     theme="snow"
-                  value={formData.description}
+                    value={formData.description}
                     onChange={(html) => setFormData({ ...formData, description: html })}
                     modules={{
                       toolbar: [
@@ -643,7 +658,7 @@ export default function EventCreation({ filterDepartment }: { filterDepartment?:
                         ['clean']
                       ],
                     }}
-                    className="min-h-[240px] bg-background"
+                    className="bg-background"
                   />
                 </div>
                 {showDescPreview && (
@@ -758,7 +773,7 @@ export default function EventCreation({ filterDepartment }: { filterDepartment?:
               <div className="space-y-2">
                 <Label htmlFor="department">Department</Label>
                 <Select value={formData.department} onValueChange={(value) => setFormData({ ...formData, department: value })}>
-                  <SelectTrigger disabled={userRoles.includes('staff')}>
+                  <SelectTrigger disabled={userRoles.includes('staff') && !allowAllDepartments}>
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
@@ -770,7 +785,7 @@ export default function EventCreation({ filterDepartment }: { filterDepartment?:
                     <SelectItem value="safety-fire">Safety & Fire Engineering</SelectItem>
                   </SelectContent>
                 </Select>
-                {userRoles.includes('staff') && staffDept && (
+                {userRoles.includes('staff') && !allowAllDepartments && staffDept && (
                   <p className="text-xs text-muted-foreground">Locked to your department: {staffDept.replace('-', ' ')}</p>
                 )}
               </div>
@@ -828,7 +843,15 @@ export default function EventCreation({ filterDepartment }: { filterDepartment?:
                     </div>
                     
                     {customSelections.map((selection, index) => (
-                      <div key={selection.id} className="p-3 border rounded-lg bg-background space-y-3">
+                      <div
+                        key={selection.id}
+                        className="p-3 border rounded-lg bg-background space-y-3"
+                        draggable
+                        onDragStart={() => onDragStart(index)}
+                        onDragOver={onDragOver}
+                        onDrop={() => onDrop(index)}
+                        title="Drag to reorder"
+                      >
                         <div className="flex items-center justify-between">
                           <h4 className="font-medium text-sm">Field {index + 1}</h4>
                           <Button
@@ -865,46 +888,73 @@ export default function EventCreation({ filterDepartment }: { filterDepartment?:
                                 <SelectItem value="select">Dropdown</SelectItem>
                                 <SelectItem value="radio">Radio Buttons</SelectItem>
                                 <SelectItem value="checkbox">Checkboxes</SelectItem>
+                                <SelectItem value="text">Short Text</SelectItem>
+                                <SelectItem value="image">Image Upload</SelectItem>
+                                <SelectItem value="upi">UPI Payment</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                         </div>
-                        
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label>Options</Label>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => addOptionToSelection(selection.id)}
-                            >
-                              <Plus className="w-4 h-4 mr-1" />
-                              Add Option
-                            </Button>
-                          </div>
-                          
+                        {/* Options editor for list-based fields */}
+                        {(selection.type === 'select' || selection.type === 'radio' || selection.type === 'checkbox') && (
                           <div className="space-y-2">
-                            {selection.options.map((option, optionIndex) => (
-                              <div key={optionIndex} className="flex items-center gap-2">
-                                <Input
-                                  value={option}
-                                  onChange={(e) => updateOptionInSelection(selection.id, optionIndex, e.target.value)}
-                                  placeholder={`Option ${optionIndex + 1}`}
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeOptionFromSelection(selection.id, optionIndex)}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <X className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            ))}
+                            <div className="flex items-center justify-between">
+                              <Label>Options</Label>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => addOptionToSelection(selection.id)}
+                              >
+                                <Plus className="w-4 h-4 mr-1" />
+                                Add Option
+                              </Button>
+                            </div>
+                            <div className="space-y-2">
+                              {selection.options.map((option, optionIndex) => (
+                                <div key={optionIndex} className="flex items-center gap-2">
+                                  <Input
+                                    value={option}
+                                    onChange={(e) => updateOptionInSelection(selection.id, optionIndex, e.target.value)}
+                                    placeholder={`Option ${optionIndex + 1}`}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeOptionFromSelection(selection.id, optionIndex)}
+                                    className="text-destructive hover:text-destructive"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
+
+                        {/* Field-specific helpers */}
+                        {selection.type === 'text' && (
+                          <p className="text-xs text-muted-foreground">Participants will enter a short answer.</p>
+                        )}
+                        {selection.type === 'image' && (
+                          <p className="text-xs text-muted-foreground">Participants can upload an image (e.g., receipt, ID). You can verify later.</p>
+                        )}
+                        {selection.type === 'upi' && (
+                          <div className="text-xs text-muted-foreground space-y-2">
+                            <p>Displays UPI QR and requires a Transaction ID when registration fee &gt; 0.</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label>UPI Payee VPA</Label>
+                                <Input value={selection.options[0] || ''} onChange={(e) => updateOptionInSelection(selection.id, 0, e.target.value)} placeholder="merchant@upi" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label>QR Image URL (optional)</Label>
+                                <Input value={selection.options[1] || ''} onChange={(e) => updateOptionInSelection(selection.id, 1, e.target.value)} placeholder="https://yourcdn/upi-qr.png" />
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         
                         <div className="flex items-center space-x-2">
                           <input
@@ -1062,8 +1112,8 @@ export default function EventCreation({ filterDepartment }: { filterDepartment?:
                           </div>
                           {event.registration_fee > 0 && (
                             <div className="flex items-center gap-1">
-                              <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                              <span className="truncate">₹{event.registration_fee}</span>
+                              <IndianRupee className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                              <span className="truncate">{event.registration_fee}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-1">

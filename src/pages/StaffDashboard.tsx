@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import EventCreation from '@/components/organizer/EventCreation';
 import { Calendar, Users, BarChart3, UserCheck } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -30,6 +31,13 @@ export default function StaffDashboard() {
   const [volAssignments, setVolAssignments] = useState<Array<{ id: number; event_id: string; user_id: string }>>([]);
   const [deptSelect, setDeptSelect] = useState<string>('');
   const [savingDept, setSavingDept] = useState(false);
+  const [deptParticipants, setDeptParticipants] = useState<Array<{ user_id: string; profile: any; events: Array<{ id: string; title: string; start_date: string }> }>>([]);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [participantQuery, setParticipantQuery] = useState('');
+  const [participantSort, setParticipantSort] = useState<'recent' | 'name' | 'events'>('recent');
+  const [isParticipantDialogOpen, setIsParticipantDialogOpen] = useState(false);
+  const [selectedParticipantDetail, setSelectedParticipantDetail] = useState<any | null>(null);
+  const [deptRegsTotal, setDeptRegsTotal] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -102,6 +110,43 @@ export default function StaffDashboard() {
     };
     void loadData();
   }, [department]);
+
+  useEffect(() => {
+    const loadParticipants = async () => {
+      if (activeTab !== 'participants' || !department) return;
+      setParticipantsLoading(true);
+      try {
+        const { data: regs } = await (supabase as any)
+          .from('event_registrations')
+          .select('user_id, registration_date, events(id, title, department, start_date)')
+          .eq('events.department', department);
+        const byUser = new Map<string, Array<{ id: string; title: string; start_date: string }>>();
+        (regs || []).forEach((r: any) => {
+          if (!r.events) return;
+          const arr = byUser.get(r.user_id) || [];
+          arr.push({ id: r.events.id, title: r.events.title, start_date: r.events.start_date });
+          byUser.set(r.user_id, arr);
+        });
+        const ids = Array.from(byUser.keys());
+        if (ids.length === 0) { setDeptParticipants([]); return; }
+        const { data: profs } = await (supabase as any)
+          .from('profiles')
+          .select('user_id, first_name, last_name, email, phone, department, created_at')
+          .in('user_id', ids);
+        const profMap: Record<string, any> = {};
+        (profs || []).forEach((p: any) => { profMap[p.user_id] = p; });
+        const list = ids.map((uid) => ({ user_id: uid, profile: profMap[uid], events: byUser.get(uid) || [] }));
+        setDeptParticipants(list);
+        // total registrations across department (deduped by user-event pairs already)
+        let totalRegs = 0;
+        list.forEach((p) => { totalRegs += p.events.length; });
+        setDeptRegsTotal(totalRegs);
+      } finally {
+        setParticipantsLoading(false);
+      }
+    };
+    void loadParticipants();
+  }, [activeTab, department]);
 
   if (loading) {
     return (
@@ -222,9 +267,94 @@ export default function StaffDashboard() {
 
             <TabsContent value="participants">
               <Card>
-                <CardHeader className="p-3 sm:p-6"><CardTitle>Participants (Department)</CardTitle></CardHeader>
-                <CardContent className="p-3 sm:p-6 text-sm text-muted-foreground">Participants listing by department can be added here.</CardContent>
+                <CardHeader className="p-3 sm:p-6">
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Participants (Department)</span>
+                    <div className="text-right leading-tight">
+                      <div className="text-xs text-muted-foreground">Total Participants: <span className="text-foreground font-medium">{deptParticipants.length}</span></div>
+                      <div className="text-xs text-muted-foreground">Registrations: <span className="text-foreground font-medium">{deptRegsTotal}</span></div>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 sm:p-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <Input value={participantQuery} onChange={(e) => setParticipantQuery(e.target.value)} placeholder="Search by name or email" />
+                    <select value={participantSort} onChange={(e) => setParticipantSort(e.target.value as any)} className="h-10 rounded-md border border-border bg-background px-3 text-sm">
+                      <option value="recent">Recently added</option>
+                      <option value="name">Name (A–Z)</option>
+                      <option value="events">Events count</option>
+                    </select>
+                  </div>
+                  {participantsLoading ? (
+                    <div className="text-center py-8 text-muted-foreground">Loading participants…</div>
+                  ) : deptParticipants.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">No participants found for this department.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {deptParticipants
+                        .filter((p) => {
+                          const q = participantQuery.toLowerCase().trim();
+                          if (!q) return true;
+                          const name = `${p.profile?.first_name || ''} ${p.profile?.last_name || ''}`.toLowerCase();
+                          return name.includes(q) || (p.profile?.email || '').toLowerCase().includes(q);
+                        })
+                        .sort((a, b) => {
+                          if (participantSort === 'name') {
+                            const an = `${a.profile?.first_name || ''} ${a.profile?.last_name || ''}`.trim().toLowerCase();
+                            const bn = `${b.profile?.first_name || ''} ${b.profile?.last_name || ''}`.trim().toLowerCase();
+                            return an.localeCompare(bn);
+                          }
+                          if (participantSort === 'events') {
+                            return (b.events.length || 0) - (a.events.length || 0);
+                          }
+                          const ad = a.profile?.created_at ? new Date(a.profile.created_at).getTime() : 0;
+                          const bd = b.profile?.created_at ? new Date(b.profile.created_at).getTime() : 0;
+                          return bd - ad;
+                        })
+                        .map((p) => (
+                          <div key={p.user_id} className="p-3 rounded-lg border bg-gradient-subtle flex items-center justify-between">
+                            <div className="min-w-0">
+                              <div className="font-medium truncate">{`${p.profile?.first_name || ''} ${p.profile?.last_name || ''}`.trim() || p.profile?.email}</div>
+                              <div className="text-xs text-muted-foreground truncate">{p.profile?.email}</div>
+                              <div className="text-xs text-muted-foreground">Events: {p.events.length}</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" variant="outline" onClick={() => { setSelectedParticipantDetail(p); setIsParticipantDialogOpen(true); }}>View Details</Button>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </CardContent>
               </Card>
+
+              <Dialog open={isParticipantDialogOpen} onOpenChange={setIsParticipantDialogOpen}>
+                <DialogContent className="w-[95vw] max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Participant Details</DialogTitle>
+                    <DialogDescription>Profile and registered events</DialogDescription>
+                  </DialogHeader>
+                  {selectedParticipantDetail && (
+                    <div className="space-y-3 text-sm">
+                      <div className="font-medium">{`${selectedParticipantDetail.profile?.first_name || ''} ${selectedParticipantDetail.profile?.last_name || ''}`.trim() || selectedParticipantDetail.profile?.email}</div>
+                      <div className="text-muted-foreground">Email: {selectedParticipantDetail.profile?.email || '—'}</div>
+                      <div className="text-muted-foreground">Phone: {selectedParticipantDetail.profile?.phone || '—'}</div>
+                      <div className="text-muted-foreground">Department: {selectedParticipantDetail.profile?.department || '—'}</div>
+                      <div className="pt-2">
+                        <div className="font-medium mb-1">Registered Events ({selectedParticipantDetail.events.length})</div>
+                        <div className="space-y-1">
+                          {selectedParticipantDetail.events.map((e: any) => (
+                            <div key={e.id} className="flex items-center justify-between p-2 rounded border bg-muted/30">
+                              <span className="truncate pr-2">{e.title}</span>
+                              <span className="text-xs text-muted-foreground">{new Date(e.start_date).toLocaleDateString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
             </TabsContent>
 
             <TabsContent value="assign-coordinators">

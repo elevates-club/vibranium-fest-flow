@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import DOMPurify from 'dompurify';
-import { Calendar, MapPin, Users, Clock, Eye } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, Eye, IndianRupee } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import EventDescriptionModal from './EventDescriptionModal';
 
@@ -18,6 +18,7 @@ interface EventCardProps {
   isRegistered?: boolean;
   registrationClosed?: boolean;
   onRegister?: () => void;
+  registrationFee?: number;
 }
 
 const EventCard = ({
@@ -33,7 +34,8 @@ const EventCard = ({
   status,
   isRegistered = false,
   registrationClosed = false,
-  onRegister
+  onRegister,
+  registrationFee = 0
 }: EventCardProps) => {
   const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
 
@@ -112,6 +114,12 @@ const EventCard = ({
           <MapPin className="w-4 h-4 mr-2 text-primary" />
           <span>{location}</span>
         </div>
+        {registrationFee > 0 && (
+          <div className="flex items-center text-sm text-muted-foreground">
+            <IndianRupee className="w-4 h-4 mr-2 text-primary" />
+            <span>Registration Fee: {registrationFee}</span>
+          </div>
+        )}
       </div>
 
       {/* Attendees Progress */}
@@ -175,7 +183,8 @@ const EventCard = ({
           attendees,
           maxAttendees,
           category,
-          department
+          department,
+          registrationFee
         }}
       />
     </div>

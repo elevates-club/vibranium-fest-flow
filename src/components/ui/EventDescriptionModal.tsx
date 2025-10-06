@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, MapPin, Users, GraduationCap } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, GraduationCap, IndianRupee } from 'lucide-react';
 
 interface EventDescriptionModalProps {
   isOpen: boolean;
@@ -16,6 +16,7 @@ interface EventDescriptionModalProps {
     maxAttendees: number;
     category: string;
     department?: string;
+    registrationFee?: number;
   } | null;
 }
 
@@ -64,6 +65,15 @@ const EventDescriptionModal = ({ isOpen, onClose, event }: EventDescriptionModal
                 <span className="ml-2 break-words">{event.time}</span>
               </div>
             </div>
+            {Number(event.registrationFee || 0) > 0 && (
+              <div className="flex items-start sm:items-center text-xs sm:text-sm">
+                <IndianRupee className="w-4 h-4 mr-2 text-primary flex-shrink-0 mt-0.5 sm:mt-0" />
+                <div className="min-w-0">
+                  <span className="font-medium">Registration Fee:</span>
+                  <span className="ml-2 break-words">{event.registrationFee}</span>
+                </div>
+              </div>
+            )}
             <div className="flex items-start sm:items-center text-xs sm:text-sm sm:col-span-2">
               <MapPin className="w-4 h-4 mr-2 text-primary flex-shrink-0 mt-0.5 sm:mt-0" />
               <div className="min-w-0">

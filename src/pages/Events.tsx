@@ -564,6 +564,7 @@ const Events = () => {
                            new Date(event.start_date) <= new Date() ? 'ongoing' : 'upcoming'}
                     isRegistered={isRegistered}
                     registrationClosed={isRegistrationClosed}
+                    registrationFee={Number(event.registration_fee || 0)}
                     onRegister={() => handleRegisterClick(event)}
                   />
                 );
