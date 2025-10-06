@@ -427,7 +427,7 @@ const Events = () => {
     { id: 'electronics', name: 'Electronics', count: events.filter(e => e.department === 'electronics').length },
     { id: 'mechanical', name: 'Mechanical', count: events.filter(e => e.department === 'mechanical').length },
     { id: 'civil', name: 'Civil', count: events.filter(e => e.department === 'civil').length },
-    { id: 'electrical', name: 'Electrical', count: events.filter(e => e.department === 'electrical').length }
+    { id: 'safety-fire', name: 'Safety & Fire Engineering', count: events.filter(e => e.department === 'safety-fire').length }
   ];
 
   const filteredEvents = events.filter(event => {
