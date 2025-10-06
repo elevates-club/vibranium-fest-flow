@@ -18,6 +18,13 @@ const emailConfig = {
 // Create transporter with Gmail configuration
 const transporter = nodemailer.createTransport(emailConfig);
 
+// Helper to safely extract base64 payload from data URL or raw base64
+const extractBase64 = (data?: string) => {
+  if (!data) return undefined;
+  const commaIdx = data.indexOf(',');
+  return commaIdx >= 0 ? data.slice(commaIdx + 1) : data;
+};
+
 // Email templates
 const emailTemplates = {
   eventRegistration: (eventDetails: any, userDetails: any, opts?: { participantId?: string }) => ({
@@ -172,12 +179,6 @@ const emailTemplates = {
                 <span class="detail-icon">🏷️</span>
                 <span class="detail-text"><strong>Category:</strong> ${eventDetails.category}</span>
               </div>
-              ${eventDetails.registrationFee > 0 ? `
-              <div class="detail-item">
-                <span class="detail-icon">💰</span>
-                <span class="detail-text"><strong>Registration Fee:</strong> ₹${eventDetails.registrationFee}</span>
-              </div>
-              ` : ''}
             </div>
           </div>
 
@@ -234,17 +235,9 @@ const emailTemplates = {
       - Location: ${eventDetails.location}
       - Category: ${eventDetails.category}
       - Capacity: ${eventDetails.attendees}/${eventDetails.maxAttendees} registered
-      ${eventDetails.registrationFee > 0 ? `- Registration Fee: ₹${eventDetails.registrationFee}` : ''}
-      ${eventDetails.pointsReward > 0 ? `- Points Reward: ${eventDetails.pointsReward} points` : ''}
 
       Description:
       ${eventDetails.description}
-
-      Important Information:
-      - Please arrive 15 minutes before the event starts
-      - Bring a valid ID for verification
-      - Check your email for any updates or changes
-      - Contact organizers if you have any questions
 
       Thank you for participating in Vibranium 5.0!
 
@@ -275,21 +268,31 @@ const emailService = {
         subject: template.subject,
         html: template.html,
         text: template.text,
-        // Gmail-specific headers
         headers: {
           'X-Mailer': 'Vibranium 5.0 Event System',
           'X-Priority': '3',
         },
       };
 
-      // Add QR code as attachment if provided
-      if (options?.qrDataURL) {
-        mailOptions.attachments = [{
-          filename: 'vibranium-digital-pass.png',
-          content: options.qrDataURL.split(',')[1],
-          encoding: 'base64',
-          cid: 'qrcode'
-        }];
+      // Add QR code as both inline and downloadable attachment when provided
+      const b64 = extractBase64(options?.qrDataURL);
+      if (b64) {
+        mailOptions.attachments = [
+          {
+            filename: `vibranium-pass${options?.participantId ? '-' + options.participantId : ''}.png`,
+            content: b64,
+            encoding: 'base64',
+            contentType: 'image/png',
+            cid: 'qrcode' // inline usage in HTML
+          },
+          {
+            filename: `vibranium-pass${options?.participantId ? '-' + options.participantId : ''}.png`,
+            content: b64,
+            encoding: 'base64',
+            contentType: 'image/png',
+            contentDisposition: 'attachment'
+          }
+        ];
       }
 
       const result = await transporter.sendMail(mailOptions);
@@ -297,17 +300,10 @@ const emailService = {
       return { success: true, messageId: result.messageId };
     } catch (error: any) {
       console.error('Error sending event registration email:', error);
-      
-      // Provide more specific error messages
       let errorMessage = 'Failed to send email';
-      if (error.code === 'EAUTH') {
-        errorMessage = 'Gmail authentication failed. Please check your app password.';
-      } else if (error.code === 'ECONNECTION') {
-        errorMessage = 'Failed to connect to Gmail SMTP server.';
-      } else if (error.code === 'EMESSAGE') {
-        errorMessage = 'Invalid email message format.';
-      }
-      
+      if (error.code === 'EAUTH') errorMessage = 'Gmail authentication failed. Please check your app password.';
+      else if (error.code === 'ECONNECTION') errorMessage = 'Failed to connect to Gmail SMTP server.';
+      else if (error.code === 'EMESSAGE') errorMessage = 'Invalid email message format.';
       return { success: false, error: errorMessage };
     }
   }
