@@ -1,5 +1,94 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { emailService } from '../src/services/emailService';
+import nodemailer from 'nodemailer';
+
+// Gmail SMTP Configuration
+const emailConfig = {
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // true for 465, false for other ports
+  auth: {
+    user: process.env.EMAIL_USER, // Your Gmail address
+    pass: process.env.EMAIL_PASS, // Your Gmail App Password
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+};
+
+// Create transporter with Gmail configuration
+const transporter = nodemailer.createTransport(emailConfig);
+
+// Email service functions
+const emailService = {
+  // Test Gmail email configuration
+  testEmailConnection: async () => {
+    try {
+      await transporter.verify();
+      console.log('Gmail SMTP connection verified successfully');
+      return { success: true, message: 'Gmail SMTP connection is working' };
+    } catch (error: any) {
+      console.error('Gmail SMTP connection failed:', error);
+      
+      let errorMessage = 'Gmail SMTP connection failed';
+      if (error.code === 'EAUTH') {
+        errorMessage = 'Gmail authentication failed. Please check your credentials and app password.';
+      } else if (error.code === 'ECONNECTION') {
+        errorMessage = 'Cannot connect to Gmail SMTP server. Check your internet connection.';
+      }
+      
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  // Send test email
+  sendTestEmail: async (toEmail: string) => {
+    try {
+      await transporter.verify();
+      
+      const mailOptions = {
+        from: `"Vibranium 5.0 Test" <${emailConfig.auth.user}>`,
+        to: toEmail,
+        subject: '🧪 Vibranium 5.0 - Email Service Test',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #667eea;">✅ Email Service Test Successful!</h2>
+            <p>This is a test email from Vibranium 5.0 event management system.</p>
+            <p><strong>Configuration:</strong></p>
+            <ul>
+              <li>SMTP Host: ${emailConfig.host}</li>
+              <li>Port: ${emailConfig.port}</li>
+              <li>Secure: ${emailConfig.secure}</li>
+              <li>From: ${emailConfig.auth.user}</li>
+            </ul>
+            <p style="margin-top: 30px; color: #666;">
+              If you received this email, your Gmail SMTP configuration is working correctly!
+            </p>
+          </div>
+        `,
+        text: `
+          Email Service Test Successful!
+          
+          This is a test email from Vibranium 5.0 event management system.
+          
+          Configuration:
+          - SMTP Host: ${emailConfig.host}
+          - Port: ${emailConfig.port}
+          - Secure: ${emailConfig.secure}
+          - From: ${emailConfig.auth.user}
+          
+          If you received this email, your Gmail SMTP configuration is working correctly!
+        `
+      };
+
+      const result = await transporter.sendMail(mailOptions);
+      console.log('Test email sent successfully:', result.messageId);
+      return { success: true, messageId: result.messageId };
+    } catch (error: any) {
+      console.error('Error sending test email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
