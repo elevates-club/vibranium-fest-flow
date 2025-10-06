@@ -23,7 +23,7 @@ import {
 
 const Events = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [events, setEvents] = useState<any[]>([]);
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -421,21 +421,22 @@ const Events = () => {
     }
   };
 
-  const categories = [
-    { id: 'all', name: 'All Events', count: events.length },
-    { id: 'workshop', name: 'Workshops', count: events.filter(e => e.category.toLowerCase() === 'workshop').length },
-    { id: 'competition', name: 'Competitions', count: events.filter(e => e.category.toLowerCase() === 'competition').length },
-    { id: 'talk', name: 'Tech Talks', count: events.filter(e => e.category.toLowerCase() === 'talk').length },
-    { id: 'networking', name: 'Networking', count: events.filter(e => e.category.toLowerCase() === 'networking').length }
+  const departments = [
+    { id: 'all', name: 'All Departments', count: events.length },
+    { id: 'computer-science', name: 'Computer Science', count: events.filter(e => e.department === 'computer-science').length },
+    { id: 'electronics', name: 'Electronics', count: events.filter(e => e.department === 'electronics').length },
+    { id: 'mechanical', name: 'Mechanical', count: events.filter(e => e.department === 'mechanical').length },
+    { id: 'civil', name: 'Civil', count: events.filter(e => e.department === 'civil').length },
+    { id: 'electrical', name: 'Electrical', count: events.filter(e => e.department === 'electrical').length }
   ];
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || 
-                           event.category.toLowerCase() === selectedCategory;
+    const matchesDepartment = selectedDepartment === 'all' || 
+                             event.department === selectedDepartment;
     
-    return matchesSearch && matchesCategory;
+    return matchesSearch && matchesDepartment;
   }).map(event => {
     const isRegistered = registrations.some(reg => reg.event_id === event.id);
     const { date, time } = formatEventDateTime(event.start_date, event.end_date);
@@ -499,19 +500,19 @@ const Events = () => {
               </Button>
             </div>
 
-            {/* Category Pills */}
+            {/* Department Pills */}
             <div className="flex flex-wrap gap-2">
-              {categories.map((category) => (
+              {departments.map((department) => (
                 <Button
-                  key={category.id}
-                  variant={selectedCategory === category.id ? "default" : "outline"}
+                  key={department.id}
+                  variant={selectedDepartment === department.id ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setSelectedCategory(category.id)}
+                  onClick={() => setSelectedDepartment(department.id)}
                   className="text-xs sm:text-sm h-8 sm:h-9 px-3 sm:px-4"
                 >
-                  <span className="hidden sm:inline">{category.name}</span>
-                  <span className="sm:hidden">{category.name.split(' ')[0]}</span>
-                  <span className="ml-1">({category.count})</span>
+                  <span className="hidden sm:inline">{department.name}</span>
+                  <span className="sm:hidden">{department.name.split(' ')[0]}</span>
+                  <span className="ml-1">({department.count})</span>
                 </Button>
               ))}
             </div>
@@ -522,8 +523,8 @@ const Events = () => {
           <div className="space-y-4 sm:space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-xl sm:text-2xl font-semibold">
-                {selectedCategory === 'all' ? 'All Events' : 
-                 categories.find(c => c.id === selectedCategory)?.name} 
+                {selectedDepartment === 'all' ? 'All Events' : 
+                 departments.find(d => d.id === selectedDepartment)?.name} 
                 <span className="text-muted-foreground ml-2 text-base sm:text-lg">
                   ({filteredEvents.length})
                 </span>
@@ -570,7 +571,7 @@ const Events = () => {
                 variant="outline" 
                 onClick={() => {
                   setSearchTerm('');
-                  setSelectedCategory('all');
+                  setSelectedDepartment('all');
                 }}
                 className="mt-4"
               >
@@ -662,7 +663,7 @@ const Events = () => {
                   </div>
                 </div>
                 
-            <div className="space-y-2">
+                <div className="space-y-2">
               <Label htmlFor="department" className="text-sm font-medium">Department</Label>
               <Select
                 value={registrationForm.department}
@@ -685,7 +686,7 @@ const Events = () => {
                 </SelectContent>
               </Select>
               {registrationForm.department === 'Other' && (
-                <Input
+                  <Input
                   placeholder="Type your department"
                   value={registrationForm.customDepartment}
                   onChange={(e) => setRegistrationForm({ ...registrationForm, customDepartment: e.target.value })}
@@ -774,15 +775,15 @@ const Events = () => {
 
           {/* Action Buttons - Fixed at bottom */}
           <div className="flex-shrink-0 flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 sm:pt-4 border-t bg-background">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsRegistrationDialogOpen(false)}
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsRegistrationDialogOpen(false)}
               className="w-full sm:flex-1 h-10 sm:h-11"
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleRegistrationSubmit}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleRegistrationSubmit}
               disabled={isRegistering}
               className="w-full sm:flex-1 h-10 sm:h-11"
             >
@@ -797,8 +798,8 @@ const Events = () => {
                   Confirm Registration
                 </>
               )}
-            </Button>
-          </div>
+                </Button>
+              </div>
         </DialogContent>
       </Dialog>
 
