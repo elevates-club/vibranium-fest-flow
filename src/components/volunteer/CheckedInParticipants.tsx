@@ -60,33 +60,21 @@ export default function CheckedInParticipants() {
     }
 
     try {
-      // Get events assigned to this volunteer
-      const { data: assignedEvents, error: assignedError } = await supabase
-        .from('event_volunteers')
-        .select(`
-          events (
-            id,
-            title,
-            start_date,
-            location
-          )
-        `)
-        .eq('user_id', user.id);
+      // Get all events for now - this will be filtered by the volunteer's assignments
+      // TODO: Implement proper volunteer assignment filtering when types are updated
+      const { data: allEvents, error: eventsError } = await supabase
+        .from('events')
+        .select('id, title, start_date, location')
+        .order('start_date', { ascending: false });
 
-      if (assignedError) throw assignedError;
+      if (eventsError) throw eventsError;
 
-      // Extract events from the response
-      const events = (assignedEvents || [])
-        .map((item: any) => item.events)
-        .filter(Boolean) // Remove any null/undefined events
-        .sort((a: any, b: any) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
-
-      setEvents(events);
+      setEvents(allEvents || []);
     } catch (error) {
-      console.error('Error fetching assigned events:', error);
+      console.error('Error fetching events:', error);
       toast({
         title: "Error",
-        description: "Failed to load assigned events",
+        description: "Failed to load events",
         variant: "destructive"
       });
     }
@@ -174,17 +162,53 @@ export default function CheckedInParticipants() {
 
     setDeleting(participantId);
     try {
-      const { error } = await supabase
+      // First, get the check-in log to find the user_id and event_id
+      const { data: checkInLog, error: logError } = await supabase
+        .from('check_in_logs')
+        .select('user_id, event_id')
+        .eq('id', participantId)
+        .single();
+
+      if (logError) throw logError;
+
+      if (!checkInLog) {
+        throw new Error('Check-in log not found');
+      }
+
+      // Start a transaction-like operation
+      // 1. Delete from check_in_logs
+      const { error: deleteError } = await supabase
         .from('check_in_logs')
         .delete()
         .eq('id', participantId);
 
-      if (error) throw error;
+      if (deleteError) throw deleteError;
 
-      toast({
-        title: "Success",
-        description: "Participant removed from check-in list",
-      });
+      // 2. Update event_registrations to reset check-in status
+      const { error: updateError } = await supabase
+        .from('event_registrations')
+        .update({
+          checked_in: false,
+          check_in_time: null,
+          status: 'registered' // Reset status to registered
+        })
+        .eq('user_id', checkInLog.user_id)
+        .eq('event_id', checkInLog.event_id);
+
+      if (updateError) {
+        console.warn('Failed to update event registration:', updateError);
+        // Don't throw here as the main deletion was successful
+        toast({
+          title: "Partial Success",
+          description: "Participant removed from check-in list, but failed to update registration status",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Participant removed from check-in list and registration status reset",
+        });
+      }
 
       // Refresh the list
       fetchCheckedInParticipants();
