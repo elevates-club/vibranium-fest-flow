@@ -185,7 +185,12 @@ export default function CheckedInParticipants() {
       if (deleteError) throw deleteError;
 
       // 2. Update event_registrations to reset check-in status
-      const { error: updateError } = await supabase
+      console.log('Updating event registration for:', {
+        user_id: checkInLog.user_id,
+        event_id: checkInLog.event_id
+      });
+
+      const { data: updateData, error: updateError } = await supabase
         .from('event_registrations')
         .update({
           checked_in: false,
@@ -193,17 +198,21 @@ export default function CheckedInParticipants() {
           status: 'registered' // Reset status to registered
         })
         .eq('user_id', checkInLog.user_id)
-        .eq('event_id', checkInLog.event_id);
+        .eq('event_id', checkInLog.event_id)
+        .select(); // Add select to see what was updated
+
+      console.log('Update result:', { updateData, updateError });
 
       if (updateError) {
-        console.warn('Failed to update event registration:', updateError);
+        console.error('Failed to update event registration:', updateError);
         // Don't throw here as the main deletion was successful
         toast({
           title: "Partial Success",
-          description: "Participant removed from check-in list, but failed to update registration status",
+          description: `Participant removed from check-in list, but failed to update registration status: ${updateError.message}`,
           variant: "destructive"
         });
       } else {
+        console.log('Successfully updated event registration');
         toast({
           title: "Success",
           description: "Participant removed from check-in list and registration status reset",
