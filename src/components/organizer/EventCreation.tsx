@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Calendar, MapPin, Users, IndianRupee, Star, Edit, Trash2, Lock, Unlock, Eye, Mail, Phone, GraduationCap, Clock, CheckCircle, Maximize2, Minimize2, Eye as EyeIcon, X, Settings } from 'lucide-react';
+import { Plus, Calendar, MapPin, Users, IndianRupee, Star, Edit, Trash2, Lock, Unlock, Eye, Mail, Phone, GraduationCap, Clock, CheckCircle, Maximize2, Minimize2, Eye as EyeIcon, X, Settings, Download } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useEvents } from '@/hooks/useEvents';
 import { formatDateDMY } from '@/lib/utils';
@@ -248,6 +248,36 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
       return;
     }
 
+    // Validate custom fields
+    const validationErrors: string[] = [];
+    
+    customSelections.forEach((selection, index) => {
+      if (selection.required) {
+        // Check if field has a label
+        if (!selection.label.trim()) {
+          validationErrors.push(`Custom field ${index + 1} is marked as required but has no label.`);
+        }
+        
+        // Check if field has options (for select, radio, checkbox types)
+        if (['select', 'radio', 'checkbox'].includes(selection.type)) {
+          const validOptions = selection.options.filter(option => option.trim() !== '');
+          if (validOptions.length === 0) {
+            validationErrors.push(`Custom field "${selection.label || `Field ${index + 1}`}" is required but has no valid options.`);
+          }
+        }
+      }
+    });
+
+    // Show validation errors if any
+    if (validationErrors.length > 0) {
+      toast({
+        title: "Validation Error",
+        description: validationErrors.join(' '),
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       if (isEditMode && editingEvent) {
         // Update existing event - store registration_closed in metadata
@@ -425,6 +455,109 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
     setSelectedEventForMembers(event);
     setIsRegisteredMembersDialogOpen(true);
     fetchRegisteredMembers(event.id);
+  };
+
+  // Remove participant from event
+  const handleRemoveParticipant = async (registrationId: string, participantName: string) => {
+    if (!confirm(`Are you sure you want to remove ${participantName} from this event? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('event_registrations')
+        .delete()
+        .eq('id', registrationId);
+
+      if (error) throw error;
+
+      // Refresh the registered members list
+      if (selectedEventForMembers) {
+        await fetchRegisteredMembers(selectedEventForMembers.id);
+      }
+
+      // Refresh registration counts
+      await fetchRegistrationCounts();
+
+      toast({
+        title: "Participant Removed",
+        description: `${participantName} has been removed from the event.`,
+      });
+    } catch (error) {
+      console.error('Error removing participant:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove participant. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Export registered members to CSV
+  const exportToCSV = () => {
+    if (registeredMembers.length === 0) return;
+
+    const headers = [
+      'Name',
+      'Email',
+      'Phone',
+      'Department',
+      'Year',
+      'College',
+      'Status',
+      'Registration Date'
+    ];
+
+    // Add custom fields headers if they exist
+    const customHeaders = selectedEventForMembers?.custom_selection_options 
+      ? selectedEventForMembers.custom_selection_options.map((field: any) => field.label)
+      : [];
+
+    const allHeaders = [...headers, ...customHeaders];
+
+    const csvData = registeredMembers.map(member => {
+      const baseData = [
+        member.profiles?.first_name && member.profiles?.last_name 
+          ? `${member.profiles.first_name} ${member.profiles.last_name}`.trim()
+          : member.profiles?.first_name || member.profiles?.last_name || 'Profile Incomplete',
+        member.profiles?.email || 'N/A',
+        member.profiles?.phone || 'Not provided',
+        member.profiles?.department || 'Not provided',
+        member.profiles?.year || 'Not provided',
+        member.profiles?.college || 'Not provided',
+        member.checked_in ? 'Checked In' : member.status || 'Registered',
+        new Date(member.registration_date).toLocaleDateString()
+      ];
+
+      // Add custom field answers
+      const customData = selectedEventForMembers?.custom_selection_options 
+        ? selectedEventForMembers.custom_selection_options.map((field: any) => {
+            if (member.custom_answers && member.custom_answers[field.id]) {
+              return Array.isArray(member.custom_answers[field.id]) 
+                ? member.custom_answers[field.id].join(', ') 
+                : member.custom_answers[field.id];
+            }
+            return 'Not answered';
+          })
+        : [];
+
+      return [...baseData, ...customData];
+    });
+
+    const csvContent = [
+      allHeaders.join(','),
+      ...csvData.map(row => row.map(field => `"${field}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${selectedEventForMembers?.title || 'event'}_registered_students.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleEditEvent = (event: any) => {
@@ -862,11 +995,14 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
                         
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="space-y-2">
-                            <Label>Question Label</Label>
+                            <Label className={selection.required ? "text-red-500" : ""}>
+                              Question Label {selection.required && <span className="text-red-500">*</span>}
+                            </Label>
                             <Input
                               value={selection.label}
                               onChange={(e) => updateCustomSelection(selection.id, 'label', e.target.value)}
                               placeholder="e.g., What's your experience level?"
+                              className={selection.required && !selection.label.trim() ? "border-red-500" : ""}
                             />
                           </div>
                           
@@ -890,7 +1026,9 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
                         
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <Label>Options</Label>
+                            <Label className={selection.required ? "text-red-500" : ""}>
+                              Options {selection.required && <span className="text-red-500">*</span>}
+                            </Label>
                             <Button
                               type="button"
                               variant="outline"
@@ -909,6 +1047,7 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
                                   value={option}
                                   onChange={(e) => updateOptionInSelection(selection.id, optionIndex, e.target.value)}
                                   placeholder={`Option ${optionIndex + 1}`}
+                                  className={selection.required && !option.trim() ? "border-red-500" : ""}
                                 />
                                 <Button
                                   type="button"
@@ -921,6 +1060,12 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
                                 </Button>
                               </div>
                             ))}
+                            {selection.required && ['select', 'radio', 'checkbox'].includes(selection.type) && 
+                             selection.options.filter(option => option.trim() !== '').length === 0 && (
+                              <p className="text-sm text-red-500 mt-1">
+                                This field is required but has no valid options. Please add at least one option.
+                              </p>
+                            )}
                           </div>
                         </div>
                         
@@ -1194,11 +1339,23 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
                   <p className="text-sm text-muted-foreground">
                     Total registered: {registeredMembers.length} students
                   </p>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <CheckCircle className="w-4 h-4" />
-                    <span>
-                      {registeredMembers.filter(member => member.checked_in).length} checked in
-                    </span>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>
+                        {registeredMembers.filter(member => member.checked_in).length} checked in
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={exportToCSV}
+                      className="flex items-center gap-2"
+                      disabled={registeredMembers.length === 0}
+                    >
+                      <Download className="w-4 h-4" />
+                      Export CSV
+                    </Button>
                   </div>
                 </div>
 
@@ -1218,6 +1375,7 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
                       ))}
                       <TableHead>Status</TableHead>
                       <TableHead>Registered</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1272,6 +1430,22 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
                             <Clock className="w-4 h-4" />
                             {new Date(member.registration_date).toLocaleDateString()}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemoveParticipant(
+                              member.id, 
+                              member.profiles?.first_name && member.profiles?.last_name 
+                                ? `${member.profiles.first_name} ${member.profiles.last_name}`.trim()
+                                : member.profiles?.first_name || member.profiles?.last_name || 'Participant'
+                            )}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                            title="Remove Participant"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

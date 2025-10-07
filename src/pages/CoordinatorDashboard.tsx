@@ -4,13 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Calendar, Check, X as XIcon, Users as UsersIcon, BarChart3 } from 'lucide-react';
+import { Calendar, Check, X as XIcon, Users as UsersIcon, BarChart3, Edit, Eye, Mail, Phone, GraduationCap, Clock, CheckCircle, Download, Trash2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { ResponsiveContainer, BarChart as RBarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { apiCall } from '@/lib/apiUtils';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import DOMPurify from 'dompurify';
 
 export default function CoordinatorDashboard() {
   const { user } = useAuth();
@@ -36,6 +42,29 @@ export default function CoordinatorDashboard() {
   const [assignedVolunteers, setAssignedVolunteers] = useState<any[]>([]);
   const [deptBreakdown, setDeptBreakdown] = useState<Array<{ department: string; count: number }>>([]);
   const [hourBreakdown, setHourBreakdown] = useState<Array<{ hour: string; count: number }>>([]);
+
+  // Event editing state
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState({
+    title: '',
+    description: '',
+    category: '',
+    location: '',
+    start_date: '',
+    end_date: '',
+    max_attendees: 50,
+    registration_fee: 0,
+    points_reward: 0,
+    department: '',
+    registration_closed: false
+  });
+
+  // Registered students popup state
+  const [isRegisteredStudentsDialogOpen, setIsRegisteredStudentsDialogOpen] = useState(false);
+  const [selectedEventForStudents, setSelectedEventForStudents] = useState<any>(null);
+  const [registeredStudents, setRegisteredStudents] = useState<any[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -301,6 +330,254 @@ export default function CoordinatorDashboard() {
     }
   };
 
+  // Convert stored ISO (UTC) to a datetime-local input value in user's local time
+  const toLocalInput = (dateStr: string) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const tzOffset = d.getTimezoneOffset(); // minutes
+    const local = new Date(d.getTime() - tzOffset * 60000);
+    return local.toISOString().slice(0, 16);
+  };
+
+  // Handle event editing
+  const handleEditEvent = (event: any) => {
+    setEditingEvent(event);
+    
+    // Get registration status from localStorage
+    const existingStatuses = JSON.parse(localStorage.getItem('eventRegistrationStatus') || '[]');
+    const eventStatus = existingStatuses.find((status: any) => status.eventId === event.id);
+    
+    setEditFormData({
+      title: event.title,
+      description: event.description,
+      category: event.category,
+      location: event.location,
+      start_date: event.start_date ? toLocalInput(event.start_date) : '',
+      end_date: event.end_date ? toLocalInput(event.end_date) : '',
+      max_attendees: event.max_attendees,
+      registration_fee: event.registration_fee,
+      points_reward: event.points_reward,
+      department: event.department,
+      registration_closed: eventStatus?.registrationClosed || false
+    });
+    
+    setIsEditDialogOpen(true);
+  };
+
+  // Handle event update
+  const handleUpdateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingEvent) return;
+
+    try {
+      const updateData = {
+        title: editFormData.title,
+        description: editFormData.description,
+        category: editFormData.category,
+        location: editFormData.location,
+        start_date: (() => { const d = new Date(editFormData.start_date); return isNaN(d.getTime()) ? null : d.toISOString(); })(),
+        end_date: (() => {
+          if (!editFormData.end_date) return editFormData.start_date ? new Date(editFormData.start_date).toISOString() : null;
+          const d = new Date(editFormData.end_date);
+          return isNaN(d.getTime()) ? null : d.toISOString();
+        })(),
+        max_attendees: editFormData.max_attendees,
+        registration_fee: editFormData.registration_fee,
+        points_reward: editFormData.points_reward || 0,
+        department: editFormData.department,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('events')
+        .update(updateData)
+        .eq('id', editingEvent.id);
+
+      if (error) throw error;
+
+      // Store registration status in localStorage as metadata
+      const registrationStatus = {
+        eventId: editingEvent.id,
+        registrationClosed: editFormData.registration_closed,
+        updatedAt: new Date().toISOString()
+      };
+      
+      const existingStatuses = JSON.parse(localStorage.getItem('eventRegistrationStatus') || '[]');
+      const updatedStatuses = existingStatuses.filter((status: any) => status.eventId !== editingEvent.id);
+      updatedStatuses.push(registrationStatus);
+      localStorage.setItem('eventRegistrationStatus', JSON.stringify(updatedStatuses));
+
+      // Refresh events data
+      const { data: joins } = await (supabase as any)
+        .from('event_coordinators')
+        .select('event_id')
+        .eq('user_id', user.id);
+      const ids = (joins || []).map((j: any) => j.event_id);
+      if (ids.length > 0) {
+        const { data: evs } = await (supabase as any)
+          .from('events')
+          .select('*')
+          .in('id', ids)
+          .order('start_date', { ascending: true });
+        setEvents(evs || []);
+      }
+
+      setIsEditDialogOpen(false);
+      setEditingEvent(null);
+    } catch (error) {
+      console.error('Error updating event:', error);
+    }
+  };
+
+  // Fetch registered students for an event
+  const fetchRegisteredStudents = async (eventId: string) => {
+    setStudentsLoading(true);
+    try {
+      const { data: registrations, error: registrationsError } = await supabase
+        .from('event_registrations')
+        .select('*, custom_answers')
+        .eq('event_id', eventId)
+        .order('registration_date', { ascending: false });
+
+      if (registrationsError) {
+        console.error('Error fetching registrations:', registrationsError);
+        return;
+      }
+
+      if (!registrations || registrations.length === 0) {
+        setRegisteredStudents([]);
+        return;
+      }
+
+      const userIds = registrations.map((reg: any) => reg.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, email, phone, department, year, college')
+        .in('user_id', userIds);
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        return;
+      }
+
+      const studentsWithProfiles = registrations.map((registration: any) => {
+        const profile = profiles?.find(p => p.user_id === registration.user_id);
+        return {
+          ...registration,
+          profiles: profile || null
+        };
+      });
+
+      setRegisteredStudents(studentsWithProfiles);
+    } catch (error) {
+      console.error('Error fetching registered students:', error);
+    } finally {
+      setStudentsLoading(false);
+    }
+  };
+
+  // Handle viewing registered students
+  const handleViewRegisteredStudents = (event: any) => {
+    setSelectedEventForStudents(event);
+    setIsRegisteredStudentsDialogOpen(true);
+    fetchRegisteredStudents(event.id);
+  };
+
+  // Remove participant from event
+  const handleRemoveParticipant = async (registrationId: string, participantName: string) => {
+    if (!confirm(`Are you sure you want to remove ${participantName} from this event? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('event_registrations')
+        .delete()
+        .eq('id', registrationId);
+
+      if (error) throw error;
+
+      // Refresh the registered students list
+      if (selectedEventForStudents) {
+        await fetchRegisteredStudents(selectedEventForStudents.id);
+      }
+
+      // Show success message
+      console.log('Participant removed successfully');
+    } catch (error) {
+      console.error('Error removing participant:', error);
+    }
+  };
+
+  // Export registered students to CSV
+  const exportToCSV = () => {
+    if (registeredStudents.length === 0) return;
+
+    const headers = [
+      'Name',
+      'Email',
+      'Phone',
+      'Department',
+      'Year',
+      'College',
+      'Status',
+      'Registration Date'
+    ];
+
+    // Add custom fields headers if they exist
+    const customHeaders = selectedEventForStudents?.custom_selection_options 
+      ? selectedEventForStudents.custom_selection_options.map((field: any) => field.label)
+      : [];
+
+    const allHeaders = [...headers, ...customHeaders];
+
+    const csvData = registeredStudents.map(student => {
+      const baseData = [
+        student.profiles?.first_name && student.profiles?.last_name 
+          ? `${student.profiles.first_name} ${student.profiles.last_name}`.trim()
+          : student.profiles?.first_name || student.profiles?.last_name || 'Profile Incomplete',
+        student.profiles?.email || 'N/A',
+        student.profiles?.phone || 'Not provided',
+        student.profiles?.department || 'Not provided',
+        student.profiles?.year || 'Not provided',
+        student.profiles?.college || 'Not provided',
+        student.checked_in ? 'Checked In' : student.status || 'Registered',
+        new Date(student.registration_date).toLocaleDateString()
+      ];
+
+      // Add custom field answers
+      const customData = selectedEventForStudents?.custom_selection_options 
+        ? selectedEventForStudents.custom_selection_options.map((field: any) => {
+            if (student.custom_answers && student.custom_answers[field.id]) {
+              return Array.isArray(student.custom_answers[field.id]) 
+                ? student.custom_answers[field.id].join(', ') 
+                : student.custom_answers[field.id];
+            }
+            return 'Not answered';
+          })
+        : [];
+
+      return [...baseData, ...customData];
+    });
+
+    const csvContent = [
+      allHeaders.join(','),
+      ...csvData.map(row => row.map(field => `"${field}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${selectedEventForStudents?.title || 'event'}_registered_students.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) {
     return (
       <div className="bg-background">
@@ -523,7 +800,29 @@ export default function CoordinatorDashboard() {
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>{ev.title}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(ev.start_date).toLocaleDateString()}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{new Date(ev.start_date).toLocaleDateString()}</span>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewRegisteredStudents(ev)}
+                          className="h-8 w-8 p-0"
+                          title="View Registered Students"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditEvent(ev)}
+                          className="h-8 w-8 p-0"
+                          title="Edit Event"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
                   </CardTitle>
                       <div className="text-xs text-muted-foreground">Participants: <span className="text-foreground font-medium">{eventCounts[ev.id] ?? '—'}</span></div>
                 </CardHeader>
@@ -779,6 +1078,331 @@ export default function CoordinatorDashboard() {
           </Tabs>
         </div>
       </div>
+
+      {/* Event Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Event</DialogTitle>
+            <DialogDescription>
+              Update the event details below
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateEvent} className="space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-title">Event Title</Label>
+                <Input
+                  id="edit-title"
+                  value={editFormData.title}
+                  onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                  placeholder="Enter event title"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-category">Category</Label>
+                <Select value={editFormData.category} onValueChange={(value) => setEditFormData({ ...editFormData, category: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="workshop">Workshop</SelectItem>
+                    <SelectItem value="competition">Competition</SelectItem>
+                    <SelectItem value="seminar">Seminar</SelectItem>
+                    <SelectItem value="exhibition">Exhibition</SelectItem>
+                    <SelectItem value="networking">Networking</SelectItem>
+                    <SelectItem value="hackathon">Hackathon</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <div className="rounded-md border quill-responsive">
+                <ReactQuill
+                  theme="snow"
+                  value={editFormData.description}
+                  onChange={(html) => setEditFormData({ ...editFormData, description: html })}
+                  modules={{
+                    toolbar: [
+                      [{ header: [1, 2, 3, false] }],
+                      ['bold', 'italic', 'underline', 'strike'],
+                      [{ list: 'ordered' }, { list: 'bullet' }],
+                      [{ align: [] }],
+                      ['blockquote', 'code-block'],
+                      ['link'],
+                      ['clean']
+                    ],
+                  }}
+                  className="bg-background"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-start_date">Start Date & Time</Label>
+                <Input
+                  id="edit-start_date"
+                  type="datetime-local"
+                  value={editFormData.start_date}
+                  onChange={(e) => setEditFormData({ ...editFormData, start_date: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-end_date">End Date & Time (Optional)</Label>
+                <Input
+                  id="edit-end_date"
+                  type="datetime-local"
+                  value={editFormData.end_date}
+                  onChange={(e) => setEditFormData({ ...editFormData, end_date: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-location">Location</Label>
+                <Input
+                  id="edit-location"
+                  value={editFormData.location}
+                  onChange={(e) => setEditFormData({ ...editFormData, location: e.target.value })}
+                  placeholder="Event location"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-max_attendees">Max Attendees</Label>
+                <Input
+                  id="edit-max_attendees"
+                  type="number"
+                  value={editFormData.max_attendees}
+                  onChange={(e) => setEditFormData({ ...editFormData, max_attendees: parseInt(e.target.value) })}
+                  min="1"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-registration_fee">Registration Fee (₹)</Label>
+                <Input
+                  id="edit-registration_fee"
+                  type="number"
+                  value={editFormData.registration_fee}
+                  onChange={(e) => setEditFormData({ ...editFormData, registration_fee: parseInt(e.target.value) })}
+                  min="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-points_reward">Points Reward (Optional)</Label>
+                <Input
+                  id="edit-points_reward"
+                  type="number"
+                  value={editFormData.points_reward}
+                  onChange={(e) => setEditFormData({ ...editFormData, points_reward: parseInt(e.target.value) || 0 })}
+                  min="0"
+                  placeholder="Enter points reward (optional)"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-department">Department</Label>
+              <Select value={editFormData.department} onValueChange={(value) => setEditFormData({ ...editFormData, department: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  <SelectItem value="computer-science">Computer Science</SelectItem>
+                  <SelectItem value="electronics">Electronics</SelectItem>
+                  <SelectItem value="mechanical">Mechanical</SelectItem>
+                  <SelectItem value="civil">Civil</SelectItem>
+                  <SelectItem value="safety-fire">Safety & Fire Engineering</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-registration_closed">Registration Status</Label>
+              <Select 
+                value={editFormData.registration_closed ? 'closed' : 'open'} 
+                onValueChange={(value) => setEditFormData({ ...editFormData, registration_closed: value === 'closed' })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select registration status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">Open for Registration</SelectItem>
+                  <SelectItem value="closed">Registration Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-3 sm:pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} className="w-full sm:w-auto">
+                Cancel
+              </Button>
+              <Button type="submit" className="w-full sm:w-auto bg-primary hover:bg-primary/90">
+                Update Event
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Registered Students Dialog */}
+      <Dialog open={isRegisteredStudentsDialogOpen} onOpenChange={setIsRegisteredStudentsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UsersIcon className="w-5 h-5 text-primary" />
+              Registered Students - {selectedEventForStudents?.title}
+            </DialogTitle>
+            <DialogDescription>
+              View all registered participants for this event
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="overflow-y-auto max-h-[60vh]">
+            {studentsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <span className="ml-2 text-muted-foreground">Loading students...</span>
+              </div>
+            ) : registeredStudents.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <UsersIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No registered students found for this event.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Total registered: {registeredStudents.length} students
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>
+                        {registeredStudents.filter(student => student.checked_in).length} checked in
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={exportToCSV}
+                      className="flex items-center gap-2"
+                      disabled={registeredStudents.length === 0}
+                    >
+                      <Download className="w-4 h-4" />
+                      Export CSV
+                    </Button>
+                  </div>
+                </div>
+
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Year</TableHead>
+                      <TableHead>College</TableHead>
+                      {selectedEventForStudents?.custom_selection_options && selectedEventForStudents.custom_selection_options.map((field: any) => (
+                        <TableHead key={field.id} className="max-w-xs">
+                          {field.label}
+                        </TableHead>
+                      ))}
+                      <TableHead>Status</TableHead>
+                      <TableHead>Registered</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {registeredStudents.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell className="font-medium">
+                          {student.profiles?.first_name && student.profiles?.last_name 
+                            ? `${student.profiles.first_name} ${student.profiles.last_name}`.trim()
+                            : student.profiles?.first_name || student.profiles?.last_name || 'Profile Incomplete'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-muted-foreground" />
+                            {student.profiles?.email || 'N/A'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-muted-foreground" />
+                            {student.profiles?.phone || 'Not provided'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <GraduationCap className="w-4 h-4 text-muted-foreground" />
+                            {student.profiles?.department || 'Not provided'}
+                          </div>
+                        </TableCell>
+                        <TableCell>{student.profiles?.year || 'Not provided'}</TableCell>
+                        <TableCell>{student.profiles?.college || 'Not provided'}</TableCell>
+                        {selectedEventForStudents?.custom_selection_options && selectedEventForStudents.custom_selection_options.map((field: any) => (
+                          <TableCell key={field.id} className="max-w-xs text-sm">
+                            {student.custom_answers && student.custom_answers[field.id] 
+                              ? (Array.isArray(student.custom_answers[field.id]) 
+                                  ? student.custom_answers[field.id].join(', ') 
+                                  : student.custom_answers[field.id])
+                              : 'Not answered'
+                            }
+                          </TableCell>
+                        ))}
+                        <TableCell>
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            student.checked_in ? 'bg-primary text-primary-foreground' : 
+                            student.status === 'registered' ? 'bg-secondary text-secondary-foreground' : 
+                            'bg-muted text-muted-foreground'
+                          }`}>
+                            {student.checked_in ? 'Checked In' : student.status || 'Registered'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Clock className="w-4 h-4" />
+                            {new Date(student.registration_date).toLocaleDateString()}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemoveParticipant(
+                              student.id, 
+                              student.profiles?.first_name && student.profiles?.last_name 
+                                ? `${student.profiles.first_name} ${student.profiles.last_name}`.trim()
+                                : student.profiles?.first_name || student.profiles?.last_name || 'Participant'
+                            )}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                            title="Remove Participant"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

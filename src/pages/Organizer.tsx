@@ -32,7 +32,8 @@ import {
   Phone,
   GraduationCap,
   Clock,
-  CheckCircle
+  CheckCircle,
+  Trash2
 } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
@@ -267,6 +268,39 @@ const Organizer = () => {
       });
     } finally {
       setMembersLoading(false);
+    }
+  };
+
+  // Remove participant from event
+  const handleRemoveParticipant = async (registrationId: string, participantName: string) => {
+    if (!confirm(`Are you sure you want to remove ${participantName} from this event? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('event_registrations')
+        .delete()
+        .eq('id', registrationId);
+
+      if (error) throw error;
+
+      // Refresh the registered members list
+      if (selectedEventForMembers) {
+        await fetchRegisteredMembers(selectedEventForMembers.id);
+      }
+
+      toast({
+        title: "Participant Removed",
+        description: `${participantName} has been removed from the event.`,
+      });
+    } catch (error) {
+      console.error('Error removing participant:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove participant. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -1337,6 +1371,7 @@ const Organizer = () => {
                       <TableHead>College</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Registered</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1382,6 +1417,22 @@ const Organizer = () => {
                             <Clock className="w-4 h-4" />
                             {new Date(member.registration_date).toLocaleDateString()}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemoveParticipant(
+                              member.id, 
+                              member.profiles?.first_name && member.profiles?.last_name 
+                                ? `${member.profiles.first_name} ${member.profiles.last_name}`.trim()
+                                : member.profiles?.first_name || member.profiles?.last_name || 'Participant'
+                            )}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                            title="Remove Participant"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
