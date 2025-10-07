@@ -2,106 +2,315 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Camera, CheckCircle, XCircle } from 'lucide-react';
-import { BrowserMultiFormatReader } from '@zxing/library';
+import { Camera, CheckCircle, XCircle, ShieldCheck, Lock } from 'lucide-react';
+import { Html5Qrcode } from 'html5-qrcode';
 
 interface QRScannerCameraProps {
   onQRCodeDetected: (qrCode: string) => void;
   isProcessing: boolean;
 }
 
+type CameraStatus = 'idle' | 'requesting' | 'granted' | 'denied' | 'scanning' | 'error';
+
 const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
   onQRCodeDetected,
   isProcessing
 }) => {
-  const [isScanning, setIsScanning] = useState(false);
+  const [cameraStatus, setCameraStatus] = useState<CameraStatus>('idle');
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+  const [permissionGranted, setPermissionGranted] = useState(false);
+  const [isProcessingQR, setIsProcessingQR] = useState(false); // Prevent multiple scans
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const scannerDivId = useRef(`qr-reader-${Math.random().toString(36).substr(2, 9)}`);
   const { toast } = useToast();
 
   useEffect(() => {
-    codeReaderRef.current = new BrowserMultiFormatReader();
+    // Check camera permission on mount
+    checkCameraPermission();
     
     return () => {
-      if (codeReaderRef.current) {
-        codeReaderRef.current.reset();
+      // Cleanup scanner on unmount
+      if (scannerRef.current && cameraStatus === 'scanning') {
+        scannerRef.current.stop().catch(console.error);
       }
     };
   }, []);
 
-  const startScanning = async () => {
+  const checkCameraPermission = async () => {
     try {
-      setCameraError(null);
-      setIsScanning(true);
-
-      if (!codeReaderRef.current || !videoRef.current) {
-        throw new Error('QR code reader not initialized');
-      }
-
-      await codeReaderRef.current.decodeFromVideoDevice(
-        undefined,
-        videoRef.current,
-        (result, error) => {
-          if (result) {
-            const qrCodeText = result.getText();
-            onQRCodeDetected(qrCodeText);
-            stopScanning();
-          }
-          // Ignore NotFoundException - it just means no QR code is visible yet
-          if (error && error.name !== 'NotFoundException') {
-            console.warn('QR scanning error:', error.message);
-          }
+      // Check if Permissions API is available
+      if ('permissions' in navigator) {
+        const result = await navigator.permissions.query({ name: 'camera' as PermissionName });
+        if (result.state === 'granted') {
+          setPermissionGranted(true);
+          setCameraStatus('granted');
+        } else if (result.state === 'denied') {
+          setCameraStatus('denied');
         }
-      );
-
-    } catch (error: any) {
-      console.error('Error accessing camera:', error);
-      setCameraError(error.message || 'Failed to access camera');
-      toast({
-        title: "Camera Access Error",
-        description: "Please allow camera access to scan QR codes.",
-        variant: "destructive",
-      });
-      setIsScanning(false);
+      }
+    } catch (error) {
+      console.log('Permissions API not available, will request on button click');
     }
   };
 
-  const stopScanning = () => {
-    setIsScanning(false);
-    if (codeReaderRef.current) {
-      codeReaderRef.current.reset();
+  const requestCameraAccess = async () => {
+    try {
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera access is not supported in this browser. Please use a modern browser like Chrome, Firefox, or Safari.');
+      }
+
+      // Check for HTTPS (required by most browsers)
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        console.warn('Camera access typically requires HTTPS. Current protocol:', window.location.protocol);
+      }
+
+      setCameraStatus('requesting');
+      setCameraError(null);
+
+      // Request camera access with proper constraints
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
+      });
+      
+      // Permission granted - stop the test stream
+      stream.getTracks().forEach(track => track.stop());
+      
+      setPermissionGranted(true);
+      setCameraStatus('granted');
+      
+      toast({
+        title: "Camera Access Granted ✓",
+        description: "You can now start scanning QR codes.",
+      });
+
+    } catch (error: any) {
+      console.error('Camera permission error:', error);
+      setCameraStatus('denied');
+      
+      let errorMsg = 'Failed to access camera';
+      let errorTitle = 'Camera Access Error';
+      
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        errorMsg = 'Camera access denied. Please click the camera icon in your browser\'s address bar and allow camera access, then click "Request Camera Access Again".';
+        errorTitle = 'Permission Denied';
+      } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        errorMsg = 'No camera found on this device. Please ensure your device has a working camera.';
+        errorTitle = 'No Camera Found';
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        errorMsg = 'Camera is already in use by another application. Please close other apps using the camera and try again.';
+        errorTitle = 'Camera In Use';
+      } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+        errorMsg = 'Camera constraints not satisfied. Your camera may not support the requested settings.';
+        errorTitle = 'Camera Settings Error';
+      } else if (error.name === 'NotSupportedError') {
+        errorMsg = 'Camera access is not supported in this browser. Please use Chrome, Firefox, or Safari.';
+        errorTitle = 'Browser Not Supported';
+      } else if (error.name === 'SecurityError') {
+        errorMsg = 'Camera access blocked due to security settings. Please ensure you\'re using HTTPS or localhost.';
+        errorTitle = 'Security Error';
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      
+      setCameraError(errorMsg);
+      toast({
+        title: errorTitle,
+        description: errorMsg,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const startScanning = async () => {
+    try {
+      setCameraError(null);
+      
+      // First set status to scanning to render the DOM element
+      setCameraStatus('scanning');
+
+      // CRITICAL: Wait for React to render the DOM element
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      console.log('Looking for element with ID:', scannerDivId.current);
+      const element = document.getElementById(scannerDivId.current);
+      
+      if (!element) {
+        throw new Error('Scanner element not found in DOM. Please try again.');
+      }
+
+      console.log('✅ Scanner element found:', element);
+
+      // Stop any existing scanner first
+      if (scannerRef.current) {
+        try {
+          await scannerRef.current.stop();
+          scannerRef.current.clear();
+          scannerRef.current = null;
+        } catch (e) {
+          console.log('No active scanner to stop');
+        }
+      }
+
+      // Initialize new scanner
+      console.log('Initializing Html5Qrcode...');
+      scannerRef.current = new Html5Qrcode(scannerDivId.current);
+
+      // Check if cameras are available
+      const cameras = await Html5Qrcode.getCameras();
+      console.log('Available cameras:', cameras.length, cameras);
+      
+      if (cameras.length === 0) {
+        throw new Error('No cameras available on this device');
+      }
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0,
+      };
+
+      console.log('Starting camera with config:', config);
+
+      // Start scanning
+      await scannerRef.current.start(
+        { facingMode: "environment" },
+        config,
+        (decodedText) => {
+          // Prevent multiple scans of same QR code
+          if (!isProcessingQR) {
+            console.log('✅ QR Code detected:', decodedText);
+            setIsProcessingQR(true);
+            onQRCodeDetected(decodedText);
+            // Stop scanner immediately after detection
+            stopScanning();
+          }
+        },
+        (errorMessage) => {
+          // Silent - normal when no QR in view
+        }
+      );
+
+      console.log('✅ Camera started successfully!');
+      setIsProcessingQR(false); // Reset processing flag
+
+    } catch (error: any) {
+      console.error('Error starting scanner:', error);
+      
+      let errorMsg = 'Failed to start scanner';
+      let errorTitle = 'Scanner Error';
+      
+      if (error.message?.includes('NotAllowedError') || error.message?.includes('Permission')) {
+        errorMsg = 'Camera permission not granted. Please allow camera access first.';
+        errorTitle = 'Permission Required';
+        setCameraStatus('denied');
+        setPermissionGranted(false);
+      } else if (error.message?.includes('NotFoundError') || error.message?.includes('No cameras')) {
+        errorMsg = 'No camera found. Please ensure your device has a working camera.';
+        errorTitle = 'Camera Not Found';
+        setCameraStatus('error');
+      } else if (error.message?.includes('NotReadableError')) {
+        errorMsg = 'Camera is in use by another application. Please close other apps and try again.';
+        errorTitle = 'Camera In Use';
+        setCameraStatus('error');
+      } else {
+        errorMsg = error.message || 'Failed to start scanner. Please try again.';
+        setCameraStatus('error');
+      }
+      
+      setCameraError(errorMsg);
+      toast({
+        title: errorTitle,
+        description: errorMsg,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const stopScanning = async () => {
+    try {
+      if (scannerRef.current && cameraStatus === 'scanning') {
+        await scannerRef.current.stop();
+        console.log('📹 Camera stopped');
+      }
+    } catch (error) {
+      console.error('Error stopping scanner:', error);
+    } finally {
+      setCameraStatus(permissionGranted ? 'granted' : 'idle');
+      setIsProcessingQR(false); // Reset processing flag
     }
   };
 
   return (
     <div className="space-y-4">
+      {/* Permission Status Banner */}
+      {cameraStatus === 'denied' && (
+        <Alert variant="destructive">
+          <Lock className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Camera access blocked.</strong> Please:
+            <ol className="list-decimal list-inside mt-2 space-y-1">
+              <li>Click the camera/lock icon in your browser's address bar</li>
+              <li>Select "Allow" for camera permissions</li>
+              <li>Click "Request Camera Access Again" below</li>
+            </ol>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {cameraStatus === 'requesting' && (
+        <Alert className="bg-blue-50 border-blue-200">
+          <ShieldCheck className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-900">
+            <strong>Requesting camera permission...</strong>
+            <br />
+            Please allow camera access when prompted by your browser. A popup should appear asking for permission.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {cameraStatus === 'granted' && (
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <strong>Camera access granted! ✓</strong>
+            <br />
+            Click "Start Camera Scan" below to begin scanning QR codes.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Scanner Area */}
       <div className="relative">
-        {!isScanning ? (
-          <div className="aspect-video bg-muted rounded-lg flex items-center justify-center border-2 border-dashed border-border">
-            <div className="text-center">
-              <Camera className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Camera not active</p>
+        {cameraStatus === 'scanning' ? (
+          <div className="relative rounded-lg overflow-hidden bg-black" style={{ width: '100%', height: '400px' }}>
+            <div 
+              id={scannerDivId.current} 
+              className="w-full h-full"
+              style={{
+                border: '2px solid #8b5cf6',
+                borderRadius: '0.5rem'
+              }}
+            />
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-4 py-2 rounded-full text-sm z-10">
+              {isProcessingQR ? '✅ QR Code Detected!' : '📱 Position QR code in frame'}
             </div>
           </div>
         ) : (
-          <div className="relative aspect-video rounded-lg overflow-hidden bg-black">
-            <video
-              ref={videoRef}
-              className="w-full h-full object-cover"
-              playsInline
-              muted
-              autoPlay
-            />
-            <div className="absolute inset-0 border-4 border-primary rounded-lg pointer-events-none">
-              <div className="absolute top-2 left-2 w-8 h-8 border-t-4 border-l-4 border-primary"></div>
-              <div className="absolute top-2 right-2 w-8 h-8 border-t-4 border-r-4 border-primary"></div>
-              <div className="absolute bottom-2 left-2 w-8 h-8 border-b-4 border-l-4 border-primary"></div>
-              <div className="absolute bottom-2 right-2 w-8 h-8 border-b-4 border-r-4 border-primary"></div>
-            </div>
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-4 py-2 rounded-full text-sm">
-              Position QR code in frame
+          <div className="bg-muted rounded-lg flex items-center justify-center border-2 border-dashed border-border" style={{ minHeight: '200px', maxHeight: '300px', height: '250px' }}>
+            <div className="text-center space-y-2">
+              <Camera className="w-12 h-12 text-muted-foreground mx-auto" />
+              <p className="text-sm text-muted-foreground">
+                {cameraStatus === 'idle' && 'Camera not active'}
+                {cameraStatus === 'requesting' && 'Requesting camera access...'}
+                {cameraStatus === 'granted' && 'Camera ready - Click Start to scan'}
+                {cameraStatus === 'denied' && 'Camera access denied'}
+                {cameraStatus === 'error' && 'Camera error - Try again'}
+              </p>
             </div>
           </div>
         )}
@@ -116,26 +325,70 @@ const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
       )}
 
       {/* Camera Controls */}
-      <div className="flex gap-2">
-        {!isScanning ? (
+      <div className="flex flex-col gap-3 pt-2">
+        {/* Permission Request Button */}
+        {(cameraStatus === 'idle' || cameraStatus === 'denied' || cameraStatus === 'error') && (
           <Button 
-            onClick={startScanning}
-            className="flex-1"
-            disabled={isProcessing}
+            onClick={requestCameraAccess}
+            variant="default"
+            className="w-full h-12 text-base font-semibold"
+            disabled={false}
             type="button"
           >
-            <Camera className="mr-2 h-4 w-4" />
-            Start Camera Scan
+            <ShieldCheck className="mr-2 h-5 w-5" />
+            {cameraStatus === 'denied' ? 'Request Camera Access Again' : 
+             cameraStatus === 'error' ? 'Try Camera Access Again' : 
+             'Allow Camera Access'}
           </Button>
-        ) : (
+        )}
+
+        {/* Requesting status indicator */}
+        {cameraStatus === 'requesting' && (
           <Button 
-            onClick={stopScanning}
             variant="outline"
-            className="flex-1"
+            className="w-full"
+            disabled={true}
             type="button"
           >
-            Stop Camera
+            <ShieldCheck className="mr-2 h-4 w-4 animate-pulse" />
+            Requesting Permission...
           </Button>
+        )}
+
+        {/* Start/Stop Scanning Buttons */}
+        {permissionGranted && (
+          <div className="flex gap-2">
+            {cameraStatus !== 'scanning' ? (
+              <Button 
+                onClick={startScanning}
+                className="flex-1 h-12 text-base font-semibold"
+                disabled={isProcessing || cameraStatus === 'requesting'}
+                type="button"
+              >
+                <Camera className="mr-2 h-5 w-5" />
+                Start Camera Scan
+              </Button>
+            ) : (
+              <Button 
+                onClick={stopScanning}
+                variant="outline"
+                className="flex-1 h-12"
+                type="button"
+              >
+                Stop Camera
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Help Text */}
+      <div className="text-sm text-muted-foreground text-center p-3 bg-muted/30 rounded-lg">
+        {!permissionGranted && (
+          <p className="leading-relaxed">💡 Camera permission is required to scan QR codes. Your privacy is protected - we only access the camera when you allow it.</p>
+        )}
+        {permissionGranted && cameraStatus !== 'scanning' && (
+          <p className="text-green-600 font-medium">✓ Camera is ready. Start scanning to check in participants.</p>
         )}
       </div>
     </div>

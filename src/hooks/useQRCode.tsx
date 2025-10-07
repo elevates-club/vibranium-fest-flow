@@ -47,17 +47,20 @@ export const useQRCode = () => {
         throw new Error('Failed to fetch user profile');
       }
 
-      // Generate QR code
+      // Generate QR code using participant_id for security (not exposing user data)
       const qrCodeDataURL = await QRCodeService.generateUserQRCode({
         userId: user.id,
         userEmail: user.email || '',
         userName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Participant',
+        participantId: profile.participant_id || undefined,
       });
 
-      // Update profile with QR code data
+      // Update profile with QR code data and ensure qr_code field is set
+      const qrToken = profile.participant_id || `VIB-${user.id}`;
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
+          qr_code: qrToken, // Store the token for lookup
           qr_code_data: qrCodeDataURL,
           qr_code_generated_at: new Date().toISOString(),
         })

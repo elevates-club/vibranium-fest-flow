@@ -135,3 +135,47 @@ All colors MUST be HSL. Futuristic tech aesthetic with purple/blue gradients.
     -webkit-line-clamp: 6;
   }
 }
+
+/* Html5-qrcode library styles - ensure camera feed renders properly */
+#html5-qrcode-button-camera-permission,
+#html5-qrcode-button-camera-start,
+#html5-qrcode-button-camera-stop {
+  display: none !important;
+}
+
+#html5qr-code-full-region {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#html5qr-code-full-region video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 0.5rem;
+}
+
+#html5qr-code-full-region__scan_region {
+  border: 2px solid #8b5cf6 !important;
+}
+
+#html5qr-code-full-region__dashboard {
+  display: none !important;
+}
+
+/* Ensure the scanner container takes full space */
+[id^="qr-reader-"] {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+[id^="qr-reader-"] > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+[id^="qr-reader-"] video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}

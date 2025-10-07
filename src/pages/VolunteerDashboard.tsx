@@ -5,10 +5,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ClipboardList, QrCode, CheckCircle, Clock, MapPin, Users } from 'lucide-react';
+import { ClipboardList, QrCode, CheckCircle, Clock, MapPin, Users, UserCheck } from 'lucide-react';
 import Navigation from '@/components/layout/Navigation';
 import { format } from 'date-fns';
-import QRScanner from '@/components/ui/QRScanner';
+import QRScanner from '@/components/volunteer/QRScanner';
+import CheckedInParticipants from '@/components/volunteer/CheckedInParticipants';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Assignment {
@@ -199,7 +200,7 @@ export default function VolunteerDashboard() {
               <Users className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-primary" />
               Volunteer Tasks
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <Button variant="hero" className="h-16 sm:h-20" onClick={() => setActiveTab('tasks')}>
                 <ClipboardList className="w-5 h-5 mr-2" />
                 View Assignments
@@ -207,6 +208,10 @@ export default function VolunteerDashboard() {
               <Button variant="outline" className="h-16 sm:h-20" onClick={() => setActiveTab('checkin')}>
                 <QrCode className="w-5 h-5 mr-2" />
                 QR Check-in
+              </Button>
+              <Button variant="outline" className="h-16 sm:h-20" onClick={() => setActiveTab('participants')}>
+                <UserCheck className="w-5 h-5 mr-2" />
+                Checked-in List
               </Button>
             </div>
           </div>
@@ -246,9 +251,10 @@ export default function VolunteerDashboard() {
 
         {/* Main Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value="tasks">My Tasks</TabsTrigger>
             <TabsTrigger value="checkin">QR Check-in</TabsTrigger>
+            <TabsTrigger value="participants">Checked-in List</TabsTrigger>
           </TabsList>
 
           <TabsContent value="tasks" className="space-y-4">
@@ -319,6 +325,10 @@ export default function VolunteerDashboard() {
 
           <TabsContent value="checkin">
             <QRScanner onScanSuccess={fetchAssignments} />
+          </TabsContent>
+
+          <TabsContent value="participants">
+            <CheckedInParticipants />
           </TabsContent>
         </Tabs>
         
