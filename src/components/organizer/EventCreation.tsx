@@ -126,7 +126,7 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
   const [customSelections, setCustomSelections] = useState<Array<{
     id: string;
     label: string;
-    type: 'select' | 'radio' | 'checkbox';
+    type: 'select' | 'radio' | 'checkbox' | 'text';
     options: string[];
     required: boolean;
   }>>([]);
@@ -138,7 +138,7 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
     const newSelection = {
       id: `selection_${Date.now()}`,
       label: '',
-      type: 'select' as const,
+      type: 'text' as const,
       options: [''],
       required: false
     };
@@ -198,7 +198,8 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
     registration_fee: 0,
     points_reward: 0,
     department: '',
-    registration_closed: false
+    registration_closed: false,
+    image_url: ''
   });
 
   // Convert stored ISO (UTC) to a datetime-local input value in user's local time
@@ -298,6 +299,7 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
           points_reward: formData.points_reward || 0, // Default to 0 if not provided
           department: formData.department,
           custom_selection_options: customSelections.length > 0 ? customSelections : null,
+          image_url: formData.image_url || null,
           updated_at: new Date().toISOString()
         };
 
@@ -342,6 +344,7 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
           points_reward: formData.points_reward || 0, // Default to 0 if not provided
           department: formData.department,
           custom_selection_options: customSelections.length > 0 ? customSelections : null,
+          image_url: formData.image_url || null,
           created_by: user.id,
           created_at: new Date().toISOString(),
           status: 'upcoming'
@@ -381,7 +384,8 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
       registration_fee: 0,
       points_reward: 10,
       department: '',
-      registration_closed: false
+      registration_closed: false,
+      image_url: ''
     });
     setCustomSelections([]);
     setShowCustomSelections(false);
@@ -579,7 +583,8 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
       registration_fee: event.registration_fee,
       points_reward: event.points_reward,
       department: event.department,
-      registration_closed: eventStatus?.registrationClosed || false
+      registration_closed: eventStatus?.registrationClosed || false,
+      image_url: event.image_url || ''
     });
     
     // Load custom selections if they exist
@@ -962,6 +967,32 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
                 
                 {showCustomSelections && (
                   <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                    {/* Payment QR Upload */}
+                    <div className="space-y-2">
+                      <Label className="text-sm">Payment QR (optional)</Label>
+                      <div className="flex items-center gap-3">
+                        <Input type="file" accept="image/*" onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file || !user) return;
+                          try {
+                            const fileName = `${user.id}/${Date.now()}_${file.name}`;
+                            const { data, error } = await (supabase as any).storage.from('payment-qr').upload(fileName, file, { upsert: true });
+                            if (error) throw error;
+                            const { data: pub } = (supabase as any).storage.from('payment-qr').getPublicUrl(data.path);
+                            const publicUrl = pub?.publicUrl as string;
+                            setFormData(prev => ({ ...prev, image_url: publicUrl }));
+                            toast({ title: 'Payment QR uploaded', description: 'Image linked to this event.' });
+                          } catch (err: any) {
+                            console.error('Upload error', err);
+                            toast({ title: 'Upload failed', description: err.message || 'Could not upload image', variant: 'destructive' });
+                          }
+                        }} />
+                        {formData.image_url && (
+                          <a href={formData.image_url} target="_blank" rel="noreferrer" className="text-xs underline">View current</a>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-muted-foreground">
                         Add custom questions/options for event registration (like Google Forms)
@@ -1016,6 +1047,7 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="text">Text Input</SelectItem>
                                 <SelectItem value="select">Dropdown</SelectItem>
                                 <SelectItem value="radio">Radio Buttons</SelectItem>
                                 <SelectItem value="checkbox">Checkboxes</SelectItem>
@@ -1041,7 +1073,7 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
                           </div>
                           
                           <div className="space-y-2">
-                            {selection.options.map((option, optionIndex) => (
+                            {selection.type !== 'text' && selection.options.map((option, optionIndex) => (
                               <div key={optionIndex} className="flex items-center gap-2">
                                 <Input
                                   value={option}
@@ -1060,7 +1092,7 @@ export default function EventCreation({ filterDepartment, allowAllDepartments = 
                                 </Button>
                               </div>
                             ))}
-                            {selection.required && ['select', 'radio', 'checkbox'].includes(selection.type) && 
+                            {selection.type !== 'text' && selection.required && ['select', 'radio', 'checkbox'].includes(selection.type) && 
                              selection.options.filter(option => option.trim() !== '').length === 0 && (
                               <p className="text-sm text-red-500 mt-1">
                                 This field is required but has no valid options. Please add at least one option.

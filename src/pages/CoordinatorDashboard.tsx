@@ -1419,7 +1419,7 @@ function RegistrationsPanel({ eventId, onModerate, searchTerm }: { eventId: stri
     const load = async () => {
       const { data } = await (supabase as any)
         .from('event_registrations')
-        .select('id, user_id, status, registration_date')
+        .select('id, user_id, status, registration_date, custom_answers')
         .eq('event_id', eventId)
         .order('registration_date', { ascending: false });
       const rows = data || [];
@@ -1502,6 +1502,9 @@ function RegistrationsPanel({ eventId, onModerate, searchTerm }: { eventId: stri
               <div className="text-muted-foreground">Year: {selected.profile?.year || '—'}</div>
               <div className="text-muted-foreground">Registered: {new Date(selected.registration_date).toLocaleString()}</div>
               <div className="text-muted-foreground">Status: {selected.status}</div>
+              {selected.custom_answers?.transaction_id && (
+                <div className="text-muted-foreground">Transaction ID: <span className="font-medium text-foreground">{selected.custom_answers.transaction_id}</span></div>
+              )}
     </div>
           )}
         </DialogContent>

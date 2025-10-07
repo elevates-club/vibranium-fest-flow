@@ -218,6 +218,8 @@ const Events = () => {
         }
       });
     }
+    // Add optional transaction id field key
+    initialAnswers['transaction_id'] = '';
     setCustomSelectionAnswers(initialAnswers);
     
     setIsRegistrationDialogOpen(true);
@@ -265,7 +267,11 @@ const Events = () => {
           event_id: selectedEvent.id,
           user_id: user.id,
           status: initialStatus,
-          custom_answers: Object.keys(customSelectionAnswers).length > 0 ? customSelectionAnswers : null
+          custom_answers: (() => {
+            const a: any = { ...customSelectionAnswers };
+            if (!a['transaction_id']) delete a['transaction_id'];
+            return Object.keys(a).length > 0 ? a : null;
+          })()
         })
         .select();
 
@@ -779,6 +785,28 @@ const Events = () => {
                 </div>
               </div>
             )}
+
+              {/* Payment Section (optional) */}
+              {selectedEvent?.image_url && (
+                <div className="space-y-3 border-t pt-4">
+                  <h3 className="text-sm font-medium text-muted-foreground">Payment</h3>
+                  <div className="space-y-2">
+                    <Label className="text-sm">Scan to Pay (optional)</Label>
+                    <div className="p-3 bg-white rounded-md border inline-block">
+                      <img src={selectedEvent.image_url} alt="Payment QR" className="w-40 h-40 object-contain" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm">Transaction ID (optional)</Label>
+                    <Input
+                      placeholder="Enter transaction/reference ID"
+                      value={(customSelectionAnswers['transaction_id'] as string) || ''}
+                      onChange={(e) => handleCustomSelectionChange('transaction_id', e.target.value)}
+                      className="h-10 sm:h-11"
+                    />
+                  </div>
+                </div>
+              )}
               </div>
             </div>
           )}
