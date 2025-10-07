@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,8 @@ import { Download, Share2, MapPin, Calendar, User, QrCode } from 'lucide-react';
 import { useQRCode } from '@/hooks/useQRCode';
 import { useAuth } from '@/hooks/useAuth';
 import html2canvas from 'html2canvas';
+import composeVibraniumTicket from '@/lib/ticketComposer';
+import ticketBg from '@/assets/pngvibraniumticket.png';
 
 interface DigitalPassProps {
   eventId?: string;
@@ -25,182 +27,86 @@ const DigitalPass: React.FC<DigitalPassProps> = ({
   const { user } = useAuth();
   const { qrCodeData, isLoading, downloadQRCode, shareQRCode } = useQRCode();
   const passRef = useRef<HTMLDivElement>(null);
+  const [composedUrl, setComposedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const compose = async () => {
+      if (!qrCodeData) return;
+      const name = `${user?.user_metadata?.first_name || ''} ${user?.user_metadata?.last_name || ''}`.trim();
+      const url = await composeVibraniumTicket({
+        backgroundSrc: ticketBg,
+        participantName: name || 'Participant',
+        participantId: qrCodeData.participantId,
+        qrCodeDataURL: qrCodeData.qrCodeDataURL,
+      });
+      setComposedUrl(url);
+    };
+    compose();
+  }, [qrCodeData, user]);
 
   const downloadFullPass = async () => {
-    if (!passRef.current || !qrCodeData) return;
-
+    if (!qrCodeData || !composedUrl) return;
     try {
-      const canvas = await html2canvas(passRef.current, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        useCORS: true,
-        allowTaint: true
-      });
-
       const link = document.createElement('a');
-      link.href = canvas.toDataURL('image/png');
+      link.href = composedUrl;
       link.download = `vibranium-pass-${qrCodeData.participantId}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (error) {
       console.error('Error downloading full pass:', error);
-      // Fallback to QR code download
       downloadQRCode();
     }
   };
 
   const shareFullPass = async () => {
-    if (!passRef.current || !qrCodeData) return;
-
+    if (!qrCodeData || !composedUrl) return;
     try {
-      const canvas = await html2canvas(passRef.current, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        useCORS: true,
-        allowTaint: true
-      });
-
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-
-        const file = new File([blob], `vibranium-pass-${qrCodeData.participantId}.png`, {
-          type: 'image/png',
+      const res = await fetch(composedUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `vibranium-pass-${qrCodeData.participantId}.png`, { type: 'image/png' });
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: 'My Vibranium 5.0 Digital Pass',
+          text: 'Check out my digital pass for Vibranium 5.0!',
+          files: [file],
         });
-
-        if (navigator.share && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            title: 'My Vibranium 5.0 Digital Pass',
-            text: 'Check out my digital pass for Vibranium 5.0!',
-            files: [file],
-          });
-        } else {
-          // Fallback to copying to clipboard
-          await navigator.clipboard.writeText(window.location.href);
-          alert('Pass link copied to clipboard!');
-        }
-      });
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        alert('Pass link copied to clipboard!');
+      }
     } catch (error) {
       console.error('Error sharing full pass:', error);
-      // Fallback to QR code share
       shareQRCode();
     }
   };
 
   if (isLoading) {
     return (
-      <Card className={`w-full max-w-sm mx-auto ${className}`}>
+      <Card className={`w-full max-w-5xl mx-auto ${className}`}>
         <div className="p-6 text-center">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-sm text-muted-foreground">Generating your digital pass...</p>
+          <p className="text-sm text-muted-foreground">Generating your ticket...</p>
         </div>
       </Card>
     );
   }
 
   return (
-    <Card className={`w-full max-w-sm mx-auto overflow-hidden ${className}`}>
-      {/* Main Pass Design */}
+    <Card className={`w-full max-w-5xl mx-auto overflow-hidden ${className}`}>
       <div className="relative" ref={passRef}>
-        {/* Left Section - Event Info */}
-        <div className="bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-800 p-6 text-white relative overflow-hidden">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-4 right-4 w-16 h-16 bg-white rounded-full"></div>
-            <div className="absolute top-12 right-8 w-8 h-8 bg-white rounded-full"></div>
-            <div className="absolute top-20 right-4 w-12 h-12 bg-white rounded-full"></div>
-          </div>
-          
-          {/* Event Title */}
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs opacity-80">Via Vibranium 5.0</span>
-              <div className="text-right">
-                <div className="text-lg font-bold">VIB</div>
-                <div className="text-xs opacity-80">2025</div>
-              </div>
-            </div>
-            
-            <h1 className="text-2xl sm:text-3xl font-bold mb-3 leading-tight">
-              {eventTitle}
-            </h1>
-            
-            {/* Event Date */}
-            {eventDate && (
-              <div className="bg-yellow-400 text-black px-3 py-1 rounded-md text-sm font-semibold mb-3 inline-block">
-                {eventDate}
-              </div>
-            )}
-            
-            {/* Event Location */}
-            <div className="flex items-center text-sm opacity-90">
-              <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
-              <span className="truncate">{eventLocation}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Section - Participant Info & QR Code */}
-        <div className="bg-white p-6 border-l-4 border-purple-600">
-          <div className="space-y-4">
-            {/* Participant Name */}
-            <div>
-              <div className="text-xs text-purple-600 font-medium mb-1">Participant Name</div>
-              <div className="text-lg font-bold text-gray-900">
-                {user?.user_metadata?.first_name} {user?.user_metadata?.last_name}
-              </div>
-            </div>
-
-            {/* Participant ID */}
-            <div>
-              <div className="text-xs text-purple-600 font-medium mb-1">Participant ID</div>
-              <div className="text-sm font-mono font-semibold text-gray-900">
-                {qrCodeData?.participantId || 'Loading...'}
-              </div>
-            </div>
-
-            {/* QR Code */}
-            <div className="text-center">
-              <div className="text-xs text-purple-600 font-medium mb-2">Entry Pass</div>
-              {qrCodeData?.qrCodeDataURL && (
-                <div className="inline-block p-2 bg-white border-2 border-gray-200 rounded-lg">
-                  <img 
-                    src={qrCodeData.qrCodeDataURL} 
-                    alt="QR Code" 
-                    className="w-24 h-24"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        {composedUrl && (
+          <img src={composedUrl} alt="Ticket" className="w-full h-auto block" />
+        )}
       </div>
-
-      {/* Action Buttons */}
-      <div className="p-4 bg-gray-50 border-t">
-        <div className="flex gap-2">
-          {/* <Button 
-            onClick={downloadFullPass}
-            variant="outline" 
-            size="sm" 
-            className="flex-1"
-            disabled={!qrCodeData}
-          >
+      {composedUrl && (
+        <div className="p-4 flex justify-center bg-muted/50 border-t border-border/50">
+          <Button onClick={downloadFullPass} variant="outline" size="sm">
             <Download className="w-4 h-4 mr-2" />
-            Download Pass
-          </Button> */}
-          {/* <Button 
-            onClick={shareFullPass}
-            variant="outline" 
-            size="sm" 
-            className="flex-1"
-            disabled={!qrCodeData}
-          >
-            <Share2 className="w-4 h-4 mr-2" />
-            Share Pass
-          </Button> */}
+            Download Ticket
+          </Button>
         </div>
-      </div>
+      )}
     </Card>
   );
 };

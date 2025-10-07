@@ -1,0 +1,106 @@
+const QR_CODE_SIZE = 250;
+const QR_CODE_X = 80;
+const QR_CODE_Y = 380;
+
+// Text positioning within the SVG (approximate pixel coordinates for placement)
+const EVENT_TITLE_X = 460;
+const EVENT_TITLE_Y = 270;
+const PARTICIPANT_NAME_X = 520;
+const PARTICIPANT_NAME_Y = 570;
+const PARTICIPANT_ID_X = 520;
+const PARTICIPANT_ID_Y = 640;
+
+return (
+    <svg width="1626" height="718" viewBox="0 0 1626 718" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" className={className}>
+      {/* Existing SVG structure from your request */}
+      <g clipPath="url(#clip0_2012_555)">
+        <path d="M34.5 0H372.5C372.5 0 373.762 22.5844 380.5 30C387.238 37.4156 407 44 407 44V674C407 674 386.359 680.301 380 689.5C373.641 698.699 372.5 718 372.5 718H34.5C34.5 718 33.9887 697.822 27 688.5C20.0113 679.178 0 674 0 674V44C0 44 19.7635 38.5915 26.5 30C33.2365 21.4085 34.5 0 34.5 0Z" fill="#09090B"/>
+        <path d="M153.178 490.914L13.375 351.4C9.7359 347.768 5.24897 345.101 0.31995 343.639C-26.4749 335.692 -49.2341 364.538 -35.2715 388.749L131.69 678.256C143.952 699.518 173.792 701.716 189.037 682.479L421.193 389.535C433.694 373.761 456.937 371.87 471.824 385.415L600.4 502.411C616.51 517.07 641.978 513.469 653.392 494.919L781.763 286.298L654.648 451.811C640.736 469.925 613.432 469.925 599.52 451.811L464.344 275.81C451.387 258.94 426.451 257.563 411.715 272.903L202.794 490.39C189.316 504.419 166.949 504.655 153.178 490.914Z" fill="#A655F7" fillOpacity="0.5" stroke="#09090B" strokeWidth="0.868893" strokeLinecap="round"/>
+        
+        {/* QR Code Area - Using the original rect, but inserting content inside */}
+        <rect x="41" y="344" width="326" height="326" rx="22" fill="#F5F5F5"/>
+        
+        {/* Placeholder for the actual QR Code SVG component. 
+            NOTE: You must use a library that outputs an actual SVG component or primitive elements. 
+            A library that outputs an IMG tag won't work here. */}
+        {qrCodeData?.qrCodeDataURL && (
+          <QRCodeSVG 
+            value={qrCodeData.qrCodeDataURL} 
+            size={QR_CODE_SIZE} 
+            x={QR_CODE_X} 
+            y={QR_CODE_Y} 
+          />
+        )}
+        
+        {/* Other fixed SVG paths... */}
+        <rect x="34" width="339" height="718" fill="url(#pattern0_2012_555)" fillOpacity="0.3"/>
+        <rect x="373" y="44" width="34" height="630" fill="url(#pattern1_2012_555)" fillOpacity="0.3"/>
+        <rect y="44" width="34" height="630" fill="url(#pattern2_2012_555)" fillOpacity="0.3"/>
+        <rect x="44.2822" y="15.8103" width="9.19744" height="55.9169" transform="rotate(48.1003 44.2822 15.8103)" fill="url(#pattern3_2012_555)" fillOpacity="0.3"/>
+        <rect x="49.7559" y="695.164" width="11.9743" height="45.8253" transform="rotate(138.943 49.7559 695.164)" fill="url(#pattern4_2012_555)" fillOpacity="0.3"/>
+        <rect x="372.006" y="22" width="34" height="9.49973" transform="rotate(48.1003 372.006 22)" fill="url(#pattern5_2012_555)" fillOpacity="0.3"/>
+        <rect x="361.731" y="700.731" width="11.9743" height="45.8253" transform="rotate(-130.214 361.731 700.731)" fill="url(#pattern6_2012_555)" fillOpacity="0.3"/>
+        {/* Text for "Via Vibranium 5.0" and "VIB 2025" and the static design text */}
+        <path d="M46.04 298.14C...Z" fill="#F5F5F5"/>
+        <path d="M44.57 239.06C...Z" fill="#EFC5FF"/>
+        <path d="M46.04 183.14C...Z" fill="#F5F5F5"/>
+        <path d="M44.57 124.06C...Z" fill="#EFC5FF"/>
+        {/* Fixed QR Code placeholder removed - replaced with dynamic version above */}
+      </g>
+
+      {/* Right Section - Dynamic Data Placement */}
+      <g clipPath="url(#clip1_2012_555)">
+        {/* Existing right side shape, gradient, and patterns */}
+        <rect x="329" y="-177" width="1343" height="1024" fill="url(#pattern8_2012_555)" fillOpacity="0.3"/>
+        <path d="M450 0H1586.5C1586.5 0 1586.28 20.9712 1594 30.5C1601.72 40.0288 1626 44 1626 44V668.5C1626 668.5 1605.27 665.293 1594 681C1582.73 696.707 1586.5 718 1586.5 718H450C450 718 453.602 690.534 438 680.5C422.398 670.466 411 673.5 411 673.5V44C411 44 434.385 39.5915 442 31C449.615 22.4085 450 0 450 0Z" fill="#09090B"/>
+        <path d="M397.705 292.643L676.5 -1L778.5 -0.999988C778.5 -0.999988 675.16 116.854 609.455 189.393C543.749 261.933 406.5 412 406.5 412L397.705 292.643Z" fill="#A655F7" fillOpacity="0.5"/>
+        <path d="M637.355 -313.469L629.134 -657.935C628.92 -666.902 626.474 -675.673 622.018 -683.457C597.795 -725.772 534.324 -716.813 522.76 -669.446L384.48 -103.047C374.325 -61.4494 409.318 -22.7161 451.729 -28.6097L1097.61 -118.362C1132.39 -123.195 1163.99 -97.5696 1166.44 -62.5437L1187.64 239.987C1190.29 277.892 1226.76 304.041 1263.51 294.398L1676.85 185.939L1317.05 241.533C1277.67 247.618 1243.22 214.713 1247.5 175.098L1289.09 -209.817C1293.08 -246.712 1263.28 -278.499 1226.21 -276.907L700.573 -254.338C666.665 -252.882 638.165 -279.54 637.355 -313.469Z" fill="#A655F7" fillOpacity="0.5"/>
+
+        {/* --- DYNAMIC DATA PLACEMENT --- */}
+        
+        {/* Event Title (e.g., "The Annual Developer Conference 2025") */}
+        <text 
+          x={EVENT_TITLE_X} 
+          y={EVENT_TITLE_Y} 
+          fill="#F5F5F5" 
+          fontSize="50" 
+          fontWeight="bold"
+        >
+          {eventTitle}
+        </text>
+
+        {/* Participant Name */}
+        <text 
+          x={PARTICIPANT_NAME_X} 
+          y={PARTICIPANT_NAME_Y} 
+          fill="#F5F5F5" 
+          fontSize="40" 
+          fontWeight="bold"
+        >
+          {user?.user_metadata?.first_name} {user?.user_metadata?.last_name}
+        </text>
+
+        {/* Participant ID */}
+        <text 
+          x={PARTICIPANT_ID_X} 
+          y={PARTICIPANT_ID_Y} 
+          fill="#F5F5F5" 
+          fontSize="30" 
+          fontFamily="monospace"
+        >
+          ID: {qrCodeData?.participantId || 'Loading...'}
+        </text>
+
+        {/* Other static text on the right side */}
+        <path d="M526.39 609C...Z" fill="#F5F5F5"/>
+        <path d="M490.3 252.6H480.75V282H473.8V252.6H464.3V246.4H490.3V252.6ZM519.164 282H506.564C502.564 282 499.748 281.317 498.114 279.95C496.514 278.55 495.714 276.1 495.714 272.6V246.4H519.164V252.6H502.664V260.95H514.214L513.714 267.15H502.664V272.1C502.664 273.5 502.981 274.467 503.614 275C504.248 275.533 505.398 275.8 507.064 275.8H519.164V282ZM543.988 268.2H550.438C550.438 272.733 549.305 276.217 547.038 278.65C544.771 281.083 541.571 282.3 537.438 282.3C528.338 282.3 523.788 276.95 523.788 266.25V263.25C523.788 254.817 526.121 249.533 530.788 247.4C532.621 246.533 534.838 246.1 537.438 246.1C541.238 246.1 544.321 247.15 546.688 249.25C549.088 251.317 550.288 254.317 550.288 258.25H543.788C543.421 256.283 542.771 254.8 541.838 253.8C540.905 252.8 539.438 252.3 537.438 252.3C535.105 252.3 533.371 253.033 532.238 254.5C531.438 255.533 530.971 257.3 530.838 259.8C530.771 260.6 530.738 261.683 530.738 263.05V266.15C530.738 269.983 531.271 272.6 532.338 274C533.438 275.4 535.138 276.1 537.438 276.1C539.771 276.1 541.371 275.467 542.238 274.2C543.138 272.9 543.721 270.9 543.988 268.2ZM582.809 282H575.859V267.6H562.809V282H555.859V246.4H562.809V261.45H575.859V246.4H582.809V282ZM625.659 252.6H613.109C611.642 252.6 610.609 252.883 610.009 253.45C609.442 254.017 609.159 255 609.159 256.4V261.35H622.209L621.709 267.55H609.159V282H602.209V253.65C602.209 251.017 602.775 249.15 603.909 248.05C605.075 246.95 607.059 246.4 609.859 246.4H625.659V252.6ZM655.151 282H642.551C638.551 282 635.734 281.317 634.101 279.95C632.501 278.55 631.701 276.1 631.701 272.6V246.4H655.151V252.6H638.651V260.95H650.201L649.701 267.15H638.651V272.1C638.651 273.5 638.967 274.467 639.601 275C640.234 275.533 641.384 275.8 643.051 275.8H655.151V282ZM685.974 271.5C685.974 274.867 684.741 277.517 682.274 279.45C679.808 281.35 676.658 282.3 672.824 282.3C669.791 282.3 666.858 281.467 664.024 279.8C662.624 278.933 661.474 277.717 660.574 276.15C659.674 274.55 659.224 272.733 659.224 270.7L665.524 270.4C665.524 272.2 666.291 273.6 667.824 274.6C669.358 275.6 671.058 276.1 672.924 276.1C677.091 276.1 679.174 274.633 679.174 271.7C679.174 269.3 677.758 267.883 674.924 267.45L669.124 266.85C666.224 266.417 663.924 265.383 662.224 263.75C660.524 262.117 659.674 259.767 659.674 256.7C659.674 253.633 660.891 251.1 663.324 249.1C665.758 247.1 668.824 246.1 672.524 246.1C676.258 246.1 679.258 247.05 681.524 248.95C683.791 250.817 684.924 253.233 684.924 256.2L678.724 256.5C678.158 253.6 676.208 252.15 672.874 252.15C670.841 252.15 669.241 252.583 668.074 253.45C666.941 254.317 666.374 255.35 666.374 256.55C666.374 257.717 666.791 258.65 667.624 259.35C668.458 260.017 669.491 260.433 670.724 260.6L676.424 261.2C682.791 262.067 685.974 265.5 685.974 271.5ZM714.665 252.6H705.115V282H698.165V252.6H688.665V246.4H714.665V252.6Z" fill="#F5F5F5"/>
+      </g>
+      
+      {/* Definitions - Make sure to include your original defs here! */}
+      {/* <defs>...</defs> */}
+      
+      {/* Note: I've omitted the <defs> from your original SVG for brevity. 
+         You must ensure the patterns (pattern0_2012_555 etc.) and clipPaths (clip0_2012_555, clip1_2012_555) 
+         are defined in the final SVG output for the background to render correctly. */}
+    </svg>
+);

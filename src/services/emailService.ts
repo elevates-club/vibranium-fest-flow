@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer';
+import { createCanvas, loadImage } from 'canvas';
+import path from 'path';
 
 // Gmail SMTP Configuration
 const emailConfig = {
@@ -281,10 +283,25 @@ export const emailService = {
         },
       };
 
-      // Add QR code as attachment if provided
-      if (options?.qrDataURL) {
+      // Compose full ticket image and attach
+      if (options?.qrDataURL && options?.participantId) {
+        const ticketPng = await composeTicketServer({
+          participantName: `${userDetails.firstName} ${userDetails.lastName}`.trim(),
+          participantId: options.participantId,
+          qrCodeDataURL: options.qrDataURL,
+        });
+
+        mailOptions.attachments = [
+          {
+            filename: `vibranium-ticket-${options.participantId}.png`,
+            content: ticketPng.split(',')[1],
+            encoding: 'base64',
+          },
+        ];
+      } else if (options?.qrDataURL) {
+        // Fallback: attach QR only
         mailOptions.attachments = [{
-          filename: 'vibranium-digital-pass.png',
+          filename: 'vibranium-qr.png',
           content: options.qrDataURL.split(',')[1],
           encoding: 'base64',
           cid: 'qrcode'
@@ -382,3 +399,67 @@ export const emailService = {
 };
 
 export default emailService;
+
+// Server-side ticket composer using node-canvas
+async function composeTicketServer({
+  participantName,
+  participantId,
+  qrCodeDataURL,
+}: { participantName: string; participantId: string; qrCodeDataURL: string }): Promise<string> {
+  const bgPath = path.resolve(__dirname, '../assets/pngvibraniumticket.png');
+  const bg = await loadImage(bgPath);
+  const qr = await loadImage(qrCodeDataURL);
+
+  const canvas = createCanvas(bg.width, bg.height);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bg, 0, 0, bg.width, bg.height);
+
+  // Text
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textBaseline = 'top';
+  ctx.font = '600 28px "Asap Condensed", Arial';
+  ctx.fillStyle = '#EFC5FF';
+  ctx.fillText('Participant Name:', 60, 112);
+  ctx.font = '500 34px "Asap Condensed", Arial';
+  ctx.fillStyle = '#FFFFFF';
+  wrapText(ctx, participantName || 'Participant', 60, 150, 300, 36);
+  ctx.font = '600 28px "Asap Condensed", Arial';
+  ctx.fillStyle = '#EFC5FF';
+  ctx.fillText('Participant ID:', 60, 208);
+  ctx.font = '500 32px "Asap Condensed", Arial';
+  ctx.fillStyle = '#FFFFFF';
+  wrapText(ctx, participantId, 60, 244, 300, 34);
+
+  // QR inside box
+  const qrTargetSize = 280;
+  const qrX = 41 + (326 - qrTargetSize) / 2;
+  const qrY = 344 + (326 - qrTargetSize) / 2;
+  ctx.drawImage(qr, qrX, qrY, qrTargetSize, qrTargetSize);
+
+  return canvas.toDataURL('image/png');
+}
+
+function wrapText(
+  ctx: any,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number
+) {
+  const words = text.split(/\s+/);
+  let line = '';
+  let drawY = y;
+  for (let i = 0; i < words.length; i++) {
+    const test = line ? line + ' ' + words[i] : words[i];
+    const { width } = ctx.measureText(test);
+    if (width > maxWidth && i > 0) {
+      ctx.fillText(line, x, drawY);
+      line = words[i];
+      drawY += lineHeight;
+    } else {
+      line = test;
+    }
+  }
+  if (line) ctx.fillText(line, x, drawY);
+}
