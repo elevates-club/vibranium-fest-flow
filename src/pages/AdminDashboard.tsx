@@ -102,7 +102,7 @@ export default function AdminDashboard() {
         throw new Error(result.error || 'Failed to delete user');
       }
 
-      toast({ title: 'User deleted', description: 'User and all related data have been permanently removed' });
+      toast({ title: 'User deleted', description: 'User data has been permanently removed from the application' });
       await loadUsers();
       await loadRoles();
     } catch (e: any) {
