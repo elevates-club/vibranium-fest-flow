@@ -45,12 +45,64 @@ export default function QRScanner({ onCheckInSuccess, onScanSuccess }: QRScanner
     void loadAssigned();
   }, [user]);
 
-  const handleQRCodeDetected = (qrCodeText: string) => {
-    setQrCode(qrCodeText);
-    toast({
-      title: "QR Code Detected",
-      description: "QR code scanned successfully. Select event and submit.",
-    });
+  // Resolve a profile from a scanned token (JSON with userId, qr_code token, or participant_id)
+  const resolveProfileFromToken = async (token: string) => {
+    let profile: any = null;
+
+    // Try JSON first
+    try {
+      const parsed = JSON.parse(token);
+      if (parsed?.userId) {
+        const { data }: any = await (supabase as any)
+          .from('profiles')
+          .select('user_id, first_name, last_name, participant_id, qr_code')
+          .eq('user_id', parsed.userId)
+          .maybeSingle();
+        if (data) profile = data;
+      }
+    } catch {}
+
+    // Try qr_code token
+    if (!profile) {
+      const { data }: any = await (supabase as any)
+        .from('profiles')
+        .select('user_id, first_name, last_name, participant_id, qr_code')
+        .eq('qr_code', token)
+        .maybeSingle();
+      if (data) profile = data;
+    }
+
+    // Try participant_id
+    if (!profile) {
+      const { data }: any = await (supabase as any)
+        .from('profiles')
+        .select('user_id, first_name, last_name, participant_id, qr_code')
+        .eq('participant_id', token)
+        .maybeSingle();
+      if (data) profile = data;
+    }
+
+    return profile as (null | { user_id: string; first_name: string | null; last_name: string | null; participant_id?: string | null });
+  };
+
+  const handleQRCodeDetected = async (qrCodeText: string) => {
+    const trimmed = qrCodeText?.trim();
+    setQrCode(trimmed);
+
+    // Try to resolve and show participant details immediately
+    const profile = await resolveProfileFromToken(trimmed);
+    if (profile) {
+      setScannedProfile({
+        user_id: profile.user_id,
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        participant_id: (profile as any).participant_id,
+      });
+      toast({ title: 'QR Code Detected', description: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Participant found' });
+    } else {
+      setScannedProfile(null);
+      toast({ title: 'QR Code Detected', description: 'Code scanned. Select event and submit to validate.' });
+    }
   };
 
   const handleCheckIn = async (e: React.FormEvent) => {
@@ -246,7 +298,7 @@ export default function QRScanner({ onCheckInSuccess, onScanSuccess }: QRScanner
               )}
               {!scannedProfile && qrCode && (
                 <div className="p-3 bg-muted/30 border border-border rounded-lg">
-                  <p className="text-sm">QR Code Ready: {qrCode.substring(0, 20)}...</p>
+                  <p className="text-sm">QR Code Ready</p>
                 </div>
               )}
             </TabsContent>
