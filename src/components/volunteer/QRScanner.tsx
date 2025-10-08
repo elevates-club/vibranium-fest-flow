@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { QrCode, CheckCircle, Keyboard, Camera } from 'lucide-react';
+import { QrCode, CheckCircle, Keyboard, Camera, IdCard } from 'lucide-react';
 import QRCodeService from '@/services/qrCodeService';
 // Removed global events; we will load only assigned events for this volunteer
 import QRScannerCamera from './QRScannerCamera';
@@ -29,6 +29,7 @@ export default function QRScanner({ onCheckInSuccess, onScanSuccess }: QRScanner
   const [notes, setNotes] = useState('');
   const [processing, setProcessing] = useState(false);
   const [scanMode, setScanMode] = useState<'camera' | 'manual'>('camera');
+  const [scannedProfile, setScannedProfile] = useState<{ user_id: string; first_name: string | null; last_name: string | null; participant_id?: string | null } | null>(null);
 
   // Load only events assigned to this volunteer
   useEffect(() => {
@@ -45,12 +46,6 @@ export default function QRScanner({ onCheckInSuccess, onScanSuccess }: QRScanner
   }, [user]);
 
   const handleQRCodeDetected = (qrCodeText: string) => {
-    console.log('QR Code detected:', {
-      raw: qrCodeText,
-      trimmed: qrCodeText.trim(),
-      length: qrCodeText.length,
-      type: typeof qrCodeText
-    });
     setQrCode(qrCodeText);
     toast({
       title: "QR Code Detected",
@@ -74,81 +69,56 @@ export default function QRScanner({ onCheckInSuccess, onScanSuccess }: QRScanner
 
     try {
       const trimmedToken = qrCode.trim();
-      
-      console.log('Processing QR code:', {
-        original: qrCode,
-        trimmed: trimmedToken,
-        length: trimmedToken.length
-      });
 
-      let profile = null;
+      let profile: { user_id: string; first_name: string | null; last_name: string | null; participant_id?: string | null } | null = null;
       let userId = null;
 
       // Try to parse as JSON first (old format)
       try {
         const qrData = JSON.parse(trimmedToken);
         if (qrData.userId) {
-          console.log('Detected old JSON format QR code:', qrData);
           userId = qrData.userId;
-          
-          // Get profile by user_id
-          const { data: jsonProfile, error: jsonError } = await supabase
+          const { data: jsonProfile } = await supabase
             .from('profiles')
             .select('user_id, first_name, last_name, participant_id, qr_code')
             .eq('user_id', userId)
             .maybeSingle();
-          
           if (jsonProfile) {
-            profile = jsonProfile;
-            console.log('Found profile from JSON format:', profile);
+            profile = jsonProfile as any;
           }
         }
-      } catch (jsonError) {
-        console.log('Not JSON format, trying token format');
-      }
+      } catch (jsonError) {}
 
       // If not found via JSON, try token format (new format)
       if (!profile) {
-        console.log('Trying token format lookup...');
-        
-        // Try qr_code field first
-        const { data: qrProfile, error: qrError } = await supabase
+        const { data: qrProfile }: any = await (supabase as any)
           .from('profiles')
           .select('user_id, first_name, last_name, participant_id, qr_code')
           .eq('qr_code', trimmedToken)
           .maybeSingle();
 
         if (qrProfile) {
-          profile = qrProfile;
-          console.log('Found profile by qr_code:', profile);
+          profile = qrProfile as any;
         } else {
-          // Try participant_id
-          const { data: pidProfile, error: pidError } = await supabase
-        .from('profiles')
+          const { data: pidProfile }: any = await (supabase as any)
+            .from('profiles')
             .select('user_id, first_name, last_name, participant_id, qr_code')
             .eq('participant_id', trimmedToken)
             .maybeSingle();
-          
           if (pidProfile) {
-            profile = pidProfile;
-            console.log('Found profile by participant_id:', profile);
+            profile = pidProfile as any;
           }
         }
       }
 
       if (!profile) {
-        console.error('No profile found for QR token:', trimmedToken);
-        toast({
-          title: "Invalid QR Code",
-          description: `No participant found with QR code "${trimmedToken}". Please ensure the QR code is valid and try again.`,
-          variant: "destructive"
-        });
+        toast({ title: "Invalid QR Code", description: `No participant found with this code.`, variant: "destructive" });
         setProcessing(false);
         return;
       }
 
       // Check if user is registered for this event
-      const { data: registration, error: regError } = await supabase
+      const { data: registration, error: regError }: any = await (supabase as any)
         .from('event_registrations')
         .select('*')
         .eq('user_id', profile.user_id)
@@ -156,22 +126,13 @@ export default function QRScanner({ onCheckInSuccess, onScanSuccess }: QRScanner
         .single();
 
       if (regError || !registration) {
-        toast({
-          title: "Not Registered",
-          description: "This user is not registered for the selected event",
-          variant: "destructive"
-        });
+        toast({ title: "Not Registered", description: "This user is not registered for the selected event", variant: "destructive" });
         setProcessing(false);
         return;
       }
 
-      // Check if already checked in
       if (registration.checked_in) {
-        toast({
-          title: "Already Checked In",
-          description: `${profile.first_name} ${profile.last_name} was already checked in`,
-          variant: "destructive"
-        });
+        toast({ title: "Already Checked In", description: `${profile.first_name} ${profile.last_name} was already checked in`, variant: "destructive" });
         setProcessing(false);
         return;
       }
@@ -186,13 +147,12 @@ export default function QRScanner({ onCheckInSuccess, onScanSuccess }: QRScanner
         .eq('id', registration.id);
 
       if (updateError) {
-        console.error('Check-in update error:', updateError);
         throw updateError;
       }
 
-      // Create check-in log (optional - don't fail if this errors)
+      // Log (best-effort)
       try {
-        const logData = {
+        await supabase.from('check_in_logs').insert({
           event_id: selectedEvent,
           user_id: profile.user_id,
           volunteer_id: user?.id || null,
@@ -200,47 +160,22 @@ export default function QRScanner({ onCheckInSuccess, onScanSuccess }: QRScanner
           zone: zone || null,
           notes: notes || null,
           check_in_time: new Date().toISOString()
-        };
-        
-        console.log('Creating check-in log:', logData);
-        
-        const { error: logError } = await supabase
-          .from('check_in_logs')
-          .insert(logData);
-          
-        if (logError) {
-          console.warn('Check-in log error (non-critical):', logError);
-        } else {
-          console.log('Check-in log created successfully');
-        }
-      } catch (logError) {
-        console.warn('Check-in log error (non-critical):', logError);
-        // Don't throw - log is optional
-      }
+        });
+      } catch {}
 
-      toast({
-        title: "Check-in Successful!",
-        description: `${profile.first_name} ${profile.last_name} has been checked in`,
-      });
+      setScannedProfile({ user_id: profile.user_id, first_name: profile.first_name, last_name: profile.last_name, participant_id: (profile as any).participant_id });
 
-      // Reset form
+      toast({ title: "Check-in Successful!", description: `${profile.first_name} ${profile.last_name} has been checked in` });
+
+      // Reset input; camera is paused by the camera component
       setQrCode('');
       setZone('');
       setNotes('');
       
-      if (onCheckInSuccess) {
-        onCheckInSuccess();
-      }
-      if (onScanSuccess) {
-        onScanSuccess({ profile, registration });
-      }
+      onCheckInSuccess && onCheckInSuccess();
+      onScanSuccess && onScanSuccess({ profile, registration });
     } catch (error: any) {
-      console.error('Check-in error:', error);
-      toast({
-        title: "Check-in Failed",
-        description: error.message || "Failed to process check-in",
-        variant: "destructive"
-      });
+      toast({ title: "Check-in Failed", description: error.message || "Failed to process check-in", variant: "destructive" });
     } finally {
       setProcessing(false);
     }
@@ -298,12 +233,20 @@ export default function QRScanner({ onCheckInSuccess, onScanSuccess }: QRScanner
                 onQRCodeDetected={handleQRCodeDetected}
                 isProcessing={processing}
               />
-              {qrCode && (
+              {scannedProfile && (
                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm text-green-800">
-                    <CheckCircle className="inline h-4 w-4 mr-1" />
-                    QR Code Ready: {qrCode.substring(0, 20)}...
+                  <p className="text-sm text-green-900 font-medium flex items-center gap-2">
+                    <IdCard className="h-4 w-4" />
+                    Checked-in: {scannedProfile.first_name || ''} {scannedProfile.last_name || ''}
                   </p>
+                  {scannedProfile.participant_id && (
+                    <p className="text-xs text-green-700 mt-1">Participant ID: {scannedProfile.participant_id}</p>
+                  )}
+                </div>
+              )}
+              {!scannedProfile && qrCode && (
+                <div className="p-3 bg-muted/30 border border-border rounded-lg">
+                  <p className="text-sm">QR Code Ready: {qrCode.substring(0, 20)}...</p>
                 </div>
               )}
             </TabsContent>

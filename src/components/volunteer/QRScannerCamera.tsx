@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Camera, CheckCircle, XCircle, ShieldCheck, Lock } from 'lucide-react';
+import { Camera, CheckCircle, XCircle, ShieldCheck, Lock, Pause, Play } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 
 interface QRScannerCameraProps {
@@ -10,7 +10,7 @@ interface QRScannerCameraProps {
   isProcessing: boolean;
 }
 
-type CameraStatus = 'idle' | 'requesting' | 'granted' | 'denied' | 'scanning' | 'error';
+type CameraStatus = 'idle' | 'requesting' | 'granted' | 'denied' | 'scanning' | 'paused' | 'error';
 
 const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
   onQRCodeDetected,
@@ -22,6 +22,7 @@ const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
   const [isProcessingQR, setIsProcessingQR] = useState(false); // Prevent multiple scans
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannerDivId = useRef(`qr-reader-${Math.random().toString(36).substr(2, 9)}`);
+  const lastDecodedRef = useRef<{ text: string; ts: number } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -30,7 +31,7 @@ const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
     
     return () => {
       // Cleanup scanner on unmount
-      if (scannerRef.current && cameraStatus === 'scanning') {
+      if (scannerRef.current && (cameraStatus === 'scanning' || cameraStatus === 'paused')) {
         scannerRef.current.stop().catch(console.error);
       }
     };
@@ -136,14 +137,11 @@ const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
       // CRITICAL: Wait for React to render the DOM element
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      console.log('Looking for element with ID:', scannerDivId.current);
       const element = document.getElementById(scannerDivId.current);
       
       if (!element) {
         throw new Error('Scanner element not found in DOM. Please try again.');
       }
-
-      console.log('✅ Scanner element found:', element);
 
       // Stop any existing scanner first
       if (scannerRef.current) {
@@ -152,17 +150,15 @@ const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
           scannerRef.current.clear();
           scannerRef.current = null;
         } catch (e) {
-          console.log('No active scanner to stop');
+          // ignore
         }
       }
 
       // Initialize new scanner
-      console.log('Initializing Html5Qrcode...');
       scannerRef.current = new Html5Qrcode(scannerDivId.current);
 
       // Check if cameras are available
       const cameras = await Html5Qrcode.getCameras();
-      console.log('Available cameras:', cameras.length, cameras);
       
       if (cameras.length === 0) {
         throw new Error('No cameras available on this device');
@@ -174,28 +170,28 @@ const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
         aspectRatio: 1.0,
       };
 
-      console.log('Starting camera with config:', config);
-
       // Start scanning
       await scannerRef.current.start(
         { facingMode: "environment" },
         config,
         (decodedText) => {
-          // Prevent multiple scans of same QR code
+          // Suppress rapid duplicates (same text within 2s)
+          const now = Date.now();
+          if (lastDecodedRef.current && lastDecodedRef.current.text === decodedText && now - lastDecodedRef.current.ts < 2000) {
+            return;
+          }
+          lastDecodedRef.current = { text: decodedText, ts: now };
+
           if (!isProcessingQR) {
-            console.log('✅ QR Code detected:', decodedText);
             setIsProcessingQR(true);
             onQRCodeDetected(decodedText);
-            // Stop scanner immediately after detection
-            stopScanning();
+            // Pause (not destroy) camera immediately after detection
+            pauseScanning();
           }
         },
-        (errorMessage) => {
-          // Silent - normal when no QR in view
-        }
+        () => {}
       );
 
-      console.log('✅ Camera started successfully!');
       setIsProcessingQR(false); // Reset processing flag
 
     } catch (error: any) {
@@ -233,15 +229,31 @@ const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
 
   const stopScanning = async () => {
     try {
-      if (scannerRef.current && cameraStatus === 'scanning') {
+      if (scannerRef.current && (cameraStatus === 'scanning' || cameraStatus === 'paused')) {
         await scannerRef.current.stop();
-        console.log('📹 Camera stopped');
       }
     } catch (error) {
       console.error('Error stopping scanner:', error);
     } finally {
       setCameraStatus(permissionGranted ? 'granted' : 'idle');
       setIsProcessingQR(false); // Reset processing flag
+    }
+  };
+
+  const pauseScanning = async () => {
+    try {
+      if (scannerRef.current && cameraStatus === 'scanning') {
+        await scannerRef.current.stop();
+        setCameraStatus('paused');
+      }
+    } catch (error) {
+      console.error('Error pausing scanner:', error);
+    }
+  };
+
+  const resumeScanning = async () => {
+    if (cameraStatus === 'paused') {
+      await startScanning();
     }
   };
 
@@ -286,7 +298,7 @@ const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
 
       {/* Scanner Area */}
       <div className="relative">
-        {cameraStatus === 'scanning' ? (
+        {cameraStatus === 'scanning' || cameraStatus === 'paused' ? (
           <div className="relative rounded-lg overflow-hidden bg-black" style={{ width: '100%', height: '400px' }}>
             <div 
               id={scannerDivId.current} 
@@ -297,7 +309,7 @@ const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
               }}
             />
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 text-white px-4 py-2 rounded-full text-sm z-10">
-              {isProcessingQR ? '✅ QR Code Detected!' : '📱 Position QR code in frame'}
+              {cameraStatus === 'paused' ? '⏸️ Camera Paused' : (isProcessingQR ? '✅ QR Code Detected!' : '📱 Position QR code in frame')}
             </div>
           </div>
         ) : (
@@ -355,10 +367,10 @@ const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
           </Button>
         )}
 
-        {/* Start/Stop Scanning Buttons */}
+        {/* Start/Stop/Pause/Resume Buttons */}
         {permissionGranted && (
           <div className="flex gap-2">
-            {cameraStatus !== 'scanning' ? (
+            {cameraStatus !== 'scanning' && cameraStatus !== 'paused' ? (
               <Button 
                 onClick={startScanning}
                 className="flex-1 h-12 text-base font-semibold"
@@ -369,14 +381,36 @@ const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
                 Start Camera Scan
               </Button>
             ) : (
-              <Button 
-                onClick={stopScanning}
-                variant="outline"
-                className="flex-1 h-12"
-                type="button"
-              >
-                Stop Camera
-              </Button>
+              <>
+                {cameraStatus === 'scanning' ? (
+                  <Button 
+                    onClick={pauseScanning}
+                    variant="secondary"
+                    className="flex-1 h-12"
+                    type="button"
+                  >
+                    <Pause className="mr-2 h-5 w-5" />
+                    Pause Camera
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={resumeScanning}
+                    className="flex-1 h-12"
+                    type="button"
+                  >
+                    <Play className="mr-2 h-5 w-5" />
+                    Resume Camera
+                  </Button>
+                )}
+                <Button 
+                  onClick={stopScanning}
+                  variant="outline"
+                  className="flex-1 h-12"
+                  type="button"
+                >
+                  Stop Camera
+                </Button>
+              </>
             )}
           </div>
         )}
@@ -387,7 +421,7 @@ const QRScannerCamera: React.FC<QRScannerCameraProps> = ({
         {!permissionGranted && (
           <p className="leading-relaxed">💡 Camera permission is required to scan QR codes. Your privacy is protected - we only access the camera when you allow it.</p>
         )}
-        {permissionGranted && cameraStatus !== 'scanning' && (
+        {permissionGranted && cameraStatus !== 'scanning' && cameraStatus !== 'paused' && (
           <p className="text-green-600 font-medium">✓ Camera is ready. Start scanning to check in participants.</p>
         )}
       </div>

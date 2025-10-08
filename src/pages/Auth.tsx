@@ -60,7 +60,7 @@ const Auth = () => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate('/dashboard');
+        navigate('/events');
       }
     };
     checkUser();
@@ -131,7 +131,7 @@ const Auth = () => {
           email: validatedData.email,
           password: validatedData.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
+            emailRedirectTo: `${window.location.origin}/events`,
             data: {
               first_name: validatedData.firstName,
               last_name: validatedData.lastName,
@@ -216,7 +216,7 @@ const Auth = () => {
                 description: `Welcome back, ${testUser.name}!`,
               });
               
-              navigate('/dashboard');
+              navigate('/events');
               return;
             }
 
@@ -271,7 +271,7 @@ const Auth = () => {
                 description: `Welcome, ${testUser.name}! Your test account has been created.`,
               });
               
-              navigate('/dashboard');
+              navigate('/events');
               return;
             }
 
@@ -297,7 +297,7 @@ const Auth = () => {
           description: "You've been successfully logged in.",
         });
         
-        navigate('/dashboard');
+        navigate('/events');
       }
     } catch (error: any) {
       if (error.name === 'ZodError') {

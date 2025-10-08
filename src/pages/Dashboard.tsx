@@ -169,7 +169,7 @@ const Dashboard = () => {
           {/* Role-specific Quick Actions */}
           {/* Participant-only: Quick Actions removed for organizer/volunteer/admin to avoid duplication */}
 
-          {(userData.primaryRole === 'Volunteer' || userData.primaryRole === 'Admin') && (
+          {userData.primaryRole === 'Volunteer' && (
             <div className="mb-6 sm:mb-8">
               <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 flex items-center">
                 <Users className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-primary" />

@@ -116,6 +116,16 @@ const Account = () => {
       const resolvedDepartment = department === 'Other' ? customDepartment : department;
       const resolvedYear = year === 'Other' ? customYear : year;
 
+      // Convert year to number if it's a valid year string
+      let yearValue: number | null = null;
+      if (resolvedYear) {
+        // Extract number from strings like "4th Year" -> 4
+        const yearMatch = resolvedYear.match(/\d+/);
+        if (yearMatch) {
+          yearValue = parseInt(yearMatch[0], 10);
+        }
+      }
+
       const upsertPayload: any = {
         user_id: user.id,
         first_name: firstName,
@@ -123,7 +133,7 @@ const Account = () => {
         email,
         phone,
         department: resolvedDepartment,
-        year: resolvedYear,
+        year: yearValue,
         college,
         updated_at: new Date().toISOString(),
       };
@@ -141,7 +151,7 @@ const Account = () => {
           last_name: lastName,
           phone,
           department: resolvedDepartment,
-          year: resolvedYear,
+          year: yearValue,
           college,
         }
       });

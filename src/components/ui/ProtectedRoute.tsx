@@ -30,7 +30,7 @@ export const ProtectedRoute = ({ children, redirectTo = '/auth', requiredRoles }
   if (requiredRoles && requiredRoles.length > 0) {
     const hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
     if (!hasRequiredRole) {
-      return <Navigate to="/dashboard" replace />;
+      return <Navigate to="/events" replace />;
     }
   }
 
