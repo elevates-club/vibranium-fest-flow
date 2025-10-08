@@ -82,12 +82,27 @@ export default function AdminDashboard() {
 
   const deleteUser = async (userId: string) => {
     try {
-      // Remove roles first
-      await supabase.from('user_roles').delete().eq('user_id', userId);
-      // Remove profile
-      const { error } = await supabase.from('profiles').delete().eq('user_id', userId);
-      if (error) throw error;
-      toast({ title: 'User deleted' });
+      // Get the current session token for authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No active session');
+      }
+
+      // Call the API endpoint to delete the user
+      const response = await fetch(`/api/delete-user?userId=${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete user');
+      }
+
+      toast({ title: 'User deleted', description: 'User and all related data have been permanently removed' });
       await loadUsers();
       await loadRoles();
     } catch (e: any) {
