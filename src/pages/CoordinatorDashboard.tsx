@@ -1224,6 +1224,7 @@ export default function CoordinatorDashboard() {
                   <SelectItem value="mechanical">Mechanical</SelectItem>
                   <SelectItem value="civil">Civil</SelectItem>
                   <SelectItem value="safety-fire">Safety & Fire Engineering</SelectItem>
+                  <SelectItem value="sh">S&H</SelectItem>
                 </SelectContent>
               </Select>
             </div>

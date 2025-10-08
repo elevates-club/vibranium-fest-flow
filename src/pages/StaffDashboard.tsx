@@ -110,11 +110,44 @@ export default function StaffDashboard() {
           .replace(/^-+|-+$/g, '');
         const deptKey = normalize(department);
         const aliasSet: Record<string, string[]> = {
-          'computer-science': ['computer-science', 'computer-science-engineering', 'computer-science-and-engineering', 'cse', 'cs'],
+          'computer-science': [
+            'computer-science', 
+            'computer-science-engineering', 
+            'computer-science-and-engineering', 
+            'cse', 
+            'cs',
+            'artificial-intelligence-and-data-science',
+            'computer-science-engineering-in-cyber-security',
+            'computer-science-and-business-systems'
+          ],
           'electronics': ['electronics', 'electronics-and-communication-engineering', 'electronics-communication-engineering', 'ece'],
           'mechanical': ['mechanical', 'mechanical-engineering', 'me'],
           'civil': ['civil', 'civil-engineering'],
-          'safety-fire': ['safety-fire', 'safety-and-fire-engineering', 'safety-fire-engineering']
+          'safety-fire': ['safety-fire', 'safety-and-fire-engineering', 'safety-fire-engineering'],
+          'science-and-humanities': [
+            'computer-science', 
+            'computer-science-engineering', 
+            'computer-science-and-engineering', 
+            'cse', 
+            'cs',
+            'artificial-intelligence-and-data-science',
+            'computer-science-engineering-in-cyber-security',
+            'computer-science-and-business-systems',
+            'electronics', 
+            'electronics-and-communication-engineering', 
+            'electronics-communication-engineering', 
+            'ece',
+            'mechanical', 
+            'mechanical-engineering', 
+            'me',
+            'civil', 
+            'civil-engineering',
+            'safety-fire', 
+            'safety-and-fire-engineering', 
+            'safety-fire-engineering',
+            'science-and-humanities',
+            'sh'
+          ]
         };
         const allowed = new Set((aliasSet[deptKey] || [deptKey]).map(normalize));
         const filtered = (profs || []).filter((p: any) => {
@@ -138,11 +171,44 @@ export default function StaffDashboard() {
           .replace(/^-+|-+$/g, '');
         const deptKey = normalize(department);
         const aliasSet: Record<string, string[]> = {
-          'computer-science': ['computer-science', 'computer-science-engineering', 'computer-science-and-engineering', 'cse', 'cs'],
+          'computer-science': [
+            'computer-science', 
+            'computer-science-engineering', 
+            'computer-science-and-engineering', 
+            'cse', 
+            'cs',
+            'artificial-intelligence-and-data-science',
+            'computer-science-engineering-in-cyber-security',
+            'computer-science-and-business-systems'
+          ],
           'electronics': ['electronics', 'electronics-and-communication-engineering', 'electronics-communication-engineering', 'ece'],
           'mechanical': ['mechanical', 'mechanical-engineering', 'me'],
           'civil': ['civil', 'civil-engineering'],
-          'safety-fire': ['safety-fire', 'safety-and-fire-engineering', 'safety-fire-engineering']
+          'safety-fire': ['safety-fire', 'safety-and-fire-engineering', 'safety-fire-engineering'],
+          'science-and-humanities': [
+            'computer-science', 
+            'computer-science-engineering', 
+            'computer-science-and-engineering', 
+            'cse', 
+            'cs',
+            'artificial-intelligence-and-data-science',
+            'computer-science-engineering-in-cyber-security',
+            'computer-science-and-business-systems',
+            'electronics', 
+            'electronics-and-communication-engineering', 
+            'electronics-communication-engineering', 
+            'ece',
+            'mechanical', 
+            'mechanical-engineering', 
+            'me',
+            'civil', 
+            'civil-engineering',
+            'safety-fire', 
+            'safety-and-fire-engineering', 
+            'safety-fire-engineering',
+            'science-and-humanities',
+            'sh'
+          ]
         };
         const allowed = new Set((aliasSet[deptKey] || [deptKey]).map(normalize));
         const filteredVols = (vprofs || []).filter((p: any) => allowed.has(normalize(p.department)));

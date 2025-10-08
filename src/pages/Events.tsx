@@ -441,7 +441,8 @@ const Events = () => {
     { id: 'electronics', name: 'Electronics', count: events.filter(e => e.department === 'electronics').length },
     { id: 'mechanical', name: 'Mechanical', count: events.filter(e => e.department === 'mechanical').length },
     { id: 'civil', name: 'Civil', count: events.filter(e => e.department === 'civil').length },
-    { id: 'safety-fire', name: 'Safety & Fire Engineering', count: events.filter(e => e.department === 'safety-fire').length }
+    { id: 'safety-fire', name: 'Safety & Fire Engineering', count: events.filter(e => e.department === 'safety-fire').length },
+    { id: 'sh', name: 'S&H', count: events.filter(e => e.department === 'sh').length }
   ];
 
   const filteredEvents = events.filter(event => {
@@ -698,6 +699,7 @@ const Events = () => {
                   <SelectItem value="Computer Science & Business Systems">Computer Science & Business Systems</SelectItem>
                   <SelectItem value="Mechanical Engineering">Mechanical Engineering</SelectItem>
                   <SelectItem value="Science & Humanities">Science & Humanities</SelectItem>
+                  <SelectItem value="S&H">S&H</SelectItem>
                   <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
               </Select>
