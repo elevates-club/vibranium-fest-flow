@@ -89,8 +89,14 @@ export default function StaffDashboard() {
   useEffect(() => {
     const loadData = async () => {
       if (!department) return;
+      
+      // Science & Humanities and S&H staff can see all events
+      const shouldLoadAllEvents = department === 'science-and-humanities' || department === 'sh';
+      
       const [{ data: evs }, { data: coordIds }, { data: volIds }] = await Promise.all([
-        (supabase as any).from('events').select('id, title, department, start_date').eq('department', department).order('start_date', { ascending: true }),
+        shouldLoadAllEvents 
+          ? (supabase as any).from('events').select('id, title, department, start_date').order('start_date', { ascending: true })
+          : (supabase as any).from('events').select('id, title, department, start_date').eq('department', department).order('start_date', { ascending: true }),
         (supabase as any).from('user_roles').select('user_id').eq('role', 'coordinator'),
         (supabase as any).from('user_roles').select('user_id').eq('role', 'volunteer')
       ]);
@@ -420,6 +426,8 @@ export default function StaffDashboard() {
                         <SelectItem value="mechanical">Mechanical</SelectItem>
                         <SelectItem value="civil">Civil</SelectItem>
                         <SelectItem value="safety-fire">Safety & Fire Engineering</SelectItem>
+                        <SelectItem value="science-and-humanities">Science & Humanities</SelectItem>
+                        <SelectItem value="sh">S&H</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
