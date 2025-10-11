@@ -68,20 +68,17 @@ const Navigation = () => {
   };
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-2xl border-b border-border/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16 sm:h-18">
+    <nav className="fixed top-0 w-full z-50 bg-background/95 backdrop-blur-md border-b border-border">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+        <div className="flex justify-between items-center h-14 sm:h-16">
           {/* Logo */}
-          <Link to="/events" className="flex items-center space-x-2 sm:space-x-3 group">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-gradient-to-br from-primary via-accent to-secondary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-all group-hover:scale-110">
-              <span className="text-white font-black text-lg sm:text-xl">V</span>
+          <Link to="/events" className="flex items-center space-x-1 sm:space-x-2">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-sm sm:text-lg">V</span>
             </div>
-            <div className="flex flex-col">
-              <span className="text-xl sm:text-2xl font-black bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
-                Vibranium
-              </span>
-              <span className="text-[10px] sm:text-xs text-muted-foreground font-semibold -mt-1">TECHFEST 5.0</span>
-            </div>
+            <span className="text-lg sm:text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              Vibranium
+            </span>
           </Link>
 
           {/* Desktop Navigation */}

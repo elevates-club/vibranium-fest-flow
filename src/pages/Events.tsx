@@ -485,53 +485,49 @@ const Events = () => {
     <div className="bg-background">
       <Navigation />
       
-      <div className="pt-20 sm:pt-24 pb-16 sm:pb-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Hero Header */}
-          <div className="text-center mb-12 sm:mb-16">
-            <div className="inline-block mb-4">
-              <span className="px-4 py-2 rounded-full bg-gradient-to-r from-primary/10 to-accent/10 text-primary text-sm font-bold border border-primary/20">
-                VIBRANIUM 5.0
-              </span>
-            </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-6 bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent leading-tight">
-              Discover Amazing Events
+      <div className="pt-16 sm:pt-20 pb-12 sm:pb-16">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+          {/* Header */}
+          <div className="text-center mb-8 sm:mb-12">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4">
+              All <span className="text-primary">Events</span>
             </h1>
-            <p className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Join workshops, competitions, and tech talks designed to level up your skills and expand your network.
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
+              Discover workshops, competitions, and tech talks designed to expand your knowledge and skills.
             </p>
           </div>
 
           {/* Search and Filters */}
-          <div className="mb-10 sm:mb-12 space-y-4 sm:space-y-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+          <div className="mb-6 sm:mb-8 space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
-                  placeholder="Search for events, workshops, or competitions..."
+                  placeholder="Search events..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 h-14 text-base bg-card/50 backdrop-blur-xl border-border/50 focus:border-primary/50 rounded-xl"
+                  className="pl-10 h-11"
                 />
               </div>
-              <Button variant="glass" className="sm:w-auto h-14 px-8">
-                <Filter className="w-5 h-5 mr-2" />
+              <Button variant="outline" className="sm:w-auto h-11">
+                <Filter className="w-4 h-4 mr-2" />
                 More Filters
               </Button>
             </div>
 
             {/* Department Pills */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2">
               {departments.map((department) => (
                 <Button
                   key={department.id}
-                  variant={selectedDepartment === department.id ? "hero" : "glass"}
-                  size="default"
+                  variant={selectedDepartment === department.id ? "default" : "outline"}
+                  size="sm"
                   onClick={() => setSelectedDepartment(department.id)}
-                  className="h-11 px-6 font-semibold"
+                  className="text-xs sm:text-sm h-8 sm:h-9 px-3 sm:px-4"
                 >
-                  {department.name}
-                  <span className="ml-2 opacity-70">({department.count})</span>
+                  <span className="hidden sm:inline">{department.name}</span>
+                  <span className="sm:hidden">{department.name.split(' ')[0]}</span>
+                  <span className="ml-1">({department.count})</span>
                 </Button>
               ))}
             </div>
