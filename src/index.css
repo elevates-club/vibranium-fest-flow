@@ -2,72 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Vibranium 5.0 Platform Design System
-All colors MUST be HSL. Futuristic tech aesthetic with purple/blue gradients.
-*/
-
+/* Modern Tech Design System - Optimized vibrant gradients */
 @layer base {
   :root {
-    /* Modern vibrant theme - clean gradients */
-    --background: 222 47% 11%;
-    --foreground: 213 31% 91%;
+    /* Deep modern dark theme */
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
 
-    --card: 222 47% 11%;
-    --card-foreground: 213 31% 91%;
+    --card: 240 5% 7%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 222 47% 11%;
-    --popover-foreground: 213 31% 91%;
+    --popover: 240 5% 7%;
+    --popover-foreground: 0 0% 98%;
 
-    /* Vibrant Purple - Primary */
-    --primary: 262 83% 58%;
-    --primary-foreground: 210 40% 98%;
-    --primary-glow: 262 90% 70%;
+    /* Vibrant gradient colors */
+    --primary: 271 91% 65%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 280 100% 70%;
 
-    /* Electric Cyan - Secondary */
-    --secondary: 189 85% 52%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 199 89% 48%;
+    --secondary-foreground: 0 0% 100%;
 
-    /* Muted surfaces */
-    --muted: 217 32% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 240 5% 12%;
+    --muted-foreground: 240 5% 64%;
 
-    /* Vibrant accent */
-    --accent: 340 82% 52%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 340 75% 55%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217 32% 17%;
-    --input: 217 32% 17%;
-    --ring: 262 83% 58%;
+    --border: 240 6% 15%;
+    --input: 240 6% 12%;
+    --ring: 271 91% 65%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
     /* Modern gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(189 85% 52%));
-    --gradient-secondary: linear-gradient(135deg, hsl(189 85% 52%), hsl(262 83% 58%));
-    --gradient-hero: linear-gradient(135deg, hsl(262 83% 58%) 0%, hsl(340 82% 52%) 50%, hsl(189 85% 52%) 100%);
-    --gradient-card: linear-gradient(135deg, hsl(222 47% 11%) 0%, hsl(217 32% 17%) 100%);
+    --gradient-primary: linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%);
+    --gradient-secondary: linear-gradient(135deg, #06B6D4 0%, #EC4899 100%);
+    --gradient-hero: linear-gradient(135deg, #8B5CF6 0%, #EC4899 50%, #06B6D4 100%);
+    --gradient-card: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%);
+    --gradient-mesh: radial-gradient(at 40% 20%, hsla(271, 91%, 65%, 0.3) 0px, transparent 50%),
+                      radial-gradient(at 80% 0%, hsla(199, 89%, 48%, 0.3) 0px, transparent 50%),
+                      radial-gradient(at 0% 50%, hsla(340, 75%, 55%, 0.3) 0px, transparent 50%);
 
-    /* Modern shadows */
-    --shadow-glow: 0 0 40px hsl(262 83% 58% / 0.4);
-    --shadow-card: 0 10px 40px hsl(222 47% 11% / 0.6);
-    --shadow-primary: 0 8px 24px hsl(262 83% 58% / 0.35);
+    /* Enhanced shadows */
+    --shadow-glow: 0 0 60px hsl(271 91% 65% / 0.5);
+    --shadow-card: 0 20px 50px -12px hsl(240 10% 3.9% / 0.8);
+    --shadow-primary: 0 10px 40px hsl(271 91% 65% / 0.4);
+    --shadow-subtle: 0 4px 20px hsl(240 10% 3.9% / 0.3);
 
-    /* Smooth animations */
+    /* Smooth transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --transition-bounce: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-    /* Sidebar */
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 213 31% 91%;
-    --sidebar-primary: 262 83% 58%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 217 32% 17%;
-    --sidebar-accent-foreground: 213 31% 91%;
-    --sidebar-border: 217 32% 17%;
-    --sidebar-ring: 262 83% 58%;
+    --sidebar-background: 240 10% 3.9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 271 91% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 5% 12%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 6% 15%;
+    --sidebar-ring: 271 91% 65%;
   }
 }
 
@@ -77,7 +74,14 @@ All colors MUST be HSL. Futuristic tech aesthetic with purple/blue gradients.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    background-image: var(--gradient-mesh);
+    background-attachment: fixed;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
   }
 }
 
