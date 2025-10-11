@@ -47,20 +47,22 @@ export const useQRCode = () => {
         throw new Error('Failed to fetch user profile');
       }
 
-      // Generate QR code using user ID
+      // Generate QR code using participant_id for security (not exposing user data)
       const qrCodeDataURL = await QRCodeService.generateUserQRCode({
         userId: user.id,
         userEmail: user.email || '',
         userName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Participant',
-        participantId: user.id,
+        participantId: profile.participant_id || undefined,
       });
 
-      // Update profile with QR code
-      const qrToken = `VIB-${user.id}`;
+      // Update profile with QR code data and ensure qr_code field is set
+      const qrToken = profile.participant_id || `VIB-${user.id}`;
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
-          qr_code: qrToken,
+          qr_code: qrToken, // Store the token for lookup
+          qr_code_data: qrCodeDataURL,
+          qr_code_generated_at: new Date().toISOString(),
         })
         .eq('user_id', user.id);
 
@@ -70,7 +72,7 @@ export const useQRCode = () => {
 
       setQrCodeData({
         qrCodeDataURL,
-        participantId: user.id,
+        participantId: profile.participant_id || '',
         generatedAt: new Date().toISOString(),
       });
 
@@ -91,7 +93,7 @@ export const useQRCode = () => {
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('qr_code')
+        .select('qr_code_data, participant_id, qr_code_generated_at')
         .eq('user_id', user.id)
         .single();
 
@@ -99,9 +101,12 @@ export const useQRCode = () => {
         throw new Error('Failed to fetch QR code data');
       }
 
-      if (profile.qr_code) {
-        // Generate QR from existing code
-        await generateQRCode();
+      if (profile.qr_code_data && profile.participant_id) {
+        setQrCodeData({
+          qrCodeDataURL: profile.qr_code_data,
+          participantId: profile.participant_id,
+          generatedAt: profile.qr_code_generated_at || new Date().toISOString(),
+        });
       } else {
         // Generate new QR code if none exists
         await generateQRCode();
